@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,8 +7,10 @@ import { ApplySheet } from '../components/ApplySheet';
 import { SocialFooter } from '../components/SocialFooter';
 import { useLanguage } from '../hyd/LanguageContext';
 import { isJobFrozenForDisplay } from '../hyd/filter';
+import { jobAbout, jobApplyHint, jobFacts, jobWorkLines, jobWorkplaceNotes } from '../hyd/jobBrief';
 import { scoreJobMatch } from '../hyd/match';
 import { getMatchPrefs, subscribeToJobMatches, unsubscribeFromJobMatches, type MatchPrefs } from '../services/jobAlerts';
+import { isJobVerifiedByOrbitSupport } from '../services/orbitSupport';
 import { reportListing, reportMailto } from '../services/reports';
 import type { JobDetailParams } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -23,8 +25,15 @@ export function JobDetailScreen({ navigation, route }: Props) {
   const [reported, setReported] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<MatchPrefs | null>(null);
   const frozen = isJobFrozenForDisplay(job);
+  const orbitVerified = isJobVerifiedByOrbitSupport(job);
   const match = scoreJobMatch(job, prefs ?? { role: '', area: '' });
   const subscribed = Boolean(prefs?.subscribed);
+  const facts = jobFacts(job);
+  const work = jobWorkLines(job);
+  const workplace = jobWorkplaceNotes(
+    { ...job, frozen: frozen || job.frozen },
+    copy,
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -39,34 +48,66 @@ export function JobDetailScreen({ navigation, route }: Props) {
           <Text style={styles.backText}>← Back</Text>
         </Pressable>
         <ScrollView style={styles.listView} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          <View style={[styles.avatar, { backgroundColor: job.color }]}>
-            <Text style={styles.initial}>{job.initial}</Text>
-          </View>
+          <Text style={styles.kicker}>{job.company}</Text>
           <Text style={styles.title}>{job.title}</Text>
-          <Text style={styles.company}>
-            {job.company} · {job.location}
-          </Text>
-          <Text style={styles.salary}>{job.salary}</Text>
-          <Text style={styles.tags}>
-            {job.jobType} · {job.tags}
-            {job.commuteMin ? ` · ${job.commuteMin} min commute` : ''}
-          </Text>
+          <Text style={styles.place}>{job.location}</Text>
 
-          <View style={styles.badges}>
-            {job.verifiedEmployer ? <Badge label={copy.verified} /> : null}
-            {frozen ? <Badge label={copy.frozen} /> : null}
-            {job.womenSafe ? <Badge label={copy.womenSafe} /> : null}
-            {job.cabProvided ? <Badge label={copy.cab} /> : null}
-            {job.nearMetro ? <Badge label={copy.metro} /> : null}
-            {job.lateShift ? <Badge label={copy.lateShift} /> : null}
-            {job.walkIn ? <Badge label={copy.walkInToday} /> : null}
-            {match.score >= 45 ? <Badge label={`${match.score}% ${copy.aiMatch}`} /> : null}
+          <View style={styles.facts}>
+            {facts.map((fact) => (
+              <View key={fact.label} style={styles.fact}>
+                <Text style={styles.factLabel}>{fact.label}</Text>
+                <Text style={styles.factValue}>{fact.value}</Text>
+              </View>
+            ))}
           </View>
+
+          {orbitVerified ? (
+            <Text testID="job-detail-orbit-verified" style={styles.verified}>
+              {copy.verified}
+            </Text>
+          ) : null}
+
+          <Section label={copy.aboutRole}>
+            <Text style={styles.prose}>{jobAbout(job)}</Text>
+          </Section>
+
+          {work.length ? (
+            <Section label={copy.theWork}>
+              {work.map((line) => (
+                <Text key={line} style={styles.line}>
+                  {line}
+                </Text>
+              ))}
+            </Section>
+          ) : null}
+
+          {workplace.length ? (
+            <Section label={copy.workplace}>
+              {workplace.map((line) => (
+                <Text key={line} style={styles.line}>
+                  {line}
+                </Text>
+              ))}
+            </Section>
+          ) : null}
+
+          {job.walkIn ? (
+            <Section label={copy.walkins}>
+              <Text style={styles.line}>
+                {job.walkIn.date} · {job.walkIn.time}
+              </Text>
+              <Text style={styles.line}>{job.walkIn.venue}</Text>
+              <Text style={styles.muted}>
+                Ask for {job.walkIn.askFor} · Bring {job.walkIn.bring}
+              </Text>
+            </Section>
+          ) : null}
 
           {match.score >= 45 ? (
-            <Text style={styles.reply}>
-              {copy.whyMatch}: {match.reasons.join(' · ')}
-            </Text>
+            <Section label={copy.whyMatch}>
+              <Text style={styles.prose}>{match.reasons.join('. ')}.</Text>
+              <Text style={styles.muted}>{match.score}% {copy.aiMatch}</Text>
+            </Section>
           ) : null}
 
           {job.lastReplyAt ? (
@@ -75,18 +116,9 @@ export function JobDetailScreen({ navigation, route }: Props) {
             </Text>
           ) : null}
 
-          {job.walkIn ? (
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>{copy.walkins}</Text>
-              <Text style={styles.cardBody}>
-                {job.walkIn.date} · {job.walkIn.time}
-              </Text>
-              <Text style={styles.cardBody}>{job.walkIn.venue}</Text>
-              <Text style={styles.muted}>
-                Ask for {job.walkIn.askFor} · Bring {job.walkIn.bring}
-              </Text>
-            </View>
-          ) : null}
+          <Section label={copy.howToApply}>
+            <Text style={styles.prose}>{jobApplyHint(job)}</Text>
+          </Section>
 
           <Pressable
             testID="job-detail-apply"
@@ -97,7 +129,7 @@ export function JobDetailScreen({ navigation, route }: Props) {
           </Pressable>
           <Pressable
             testID="job-subscribe-matches"
-            style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.textAction, pressed && styles.pressed]}
             onPress={() => {
               if (subscribed) {
                 void unsubscribeFromJobMatches().then(setPrefs);
@@ -109,40 +141,43 @@ export function JobDetailScreen({ navigation, route }: Props) {
               }).then(setPrefs);
             }}
           >
-            <Text style={styles.ghostText}>{subscribed ? copy.subscribed : copy.subscribeMatches}</Text>
+            <Text style={styles.textActionLabel}>{subscribed ? copy.subscribed : copy.similarRoles}</Text>
           </Pressable>
-          <Pressable
-            testID="report-job"
-            style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
-            onPress={() => {
-              void reportListing('job', job).then(() => setReported('job'));
-              void Linking.openURL(reportMailto('job', job)).catch(() => undefined);
-            }}
-          >
-            <Text style={styles.ghostText}>{reported === 'job' ? 'Job reported' : 'Report job'}</Text>
-          </Pressable>
-          <Pressable
-            testID="report-employer"
-            style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
-            onPress={() => {
-              void reportListing('employer', job).then(() => setReported('employer'));
-              void Linking.openURL(reportMailto('employer', job)).catch(() => undefined);
-            }}
-          >
-            <Text style={styles.ghostText}>{reported === 'employer' ? 'Employer reported' : 'Report employer'}</Text>
-          </Pressable>
+
+          <View style={styles.reports}>
+            <Pressable
+              testID="report-job"
+              onPress={() => {
+                void reportListing('job', job).then(() => setReported('job'));
+                void Linking.openURL(reportMailto('job', job)).catch(() => undefined);
+              }}
+            >
+              <Text style={styles.report}>{reported === 'job' ? 'Job reported' : 'Report job'}</Text>
+            </Pressable>
+            <Text style={styles.reportDot}>·</Text>
+            <Pressable
+              testID="report-employer"
+              onPress={() => {
+                void reportListing('employer', job).then(() => setReported('employer'));
+                void Linking.openURL(reportMailto('employer', job)).catch(() => undefined);
+              }}
+            >
+              <Text style={styles.report}>{reported === 'employer' ? 'Employer reported' : 'Report employer'}</Text>
+            </Pressable>
+          </View>
+          <SocialFooter message={`${job.title} at ${job.company} — Hyderabad jobs on Orbit.`} />
         </ScrollView>
-        <SocialFooter message={`${job.title} at ${job.company} — Hyderabad jobs on Orbit.`} />
       </SafeAreaView>
       <ApplySheet job={job} visible={applyOpen} onClose={() => setApplyOpen(false)} />
     </View>
   );
 }
 
-function Badge({ label }: { label: string }) {
+function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <View style={styles.badge}>
-      <Text style={styles.badgeText}>{label}</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      {children}
     </View>
   );
 }
@@ -153,60 +188,126 @@ const styles = StyleSheet.create({
   listView: { flex: 1 },
   back: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
   backText: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
-  body: { paddingHorizontal: 24, paddingBottom: 24 },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  body: { paddingHorizontal: 24, paddingBottom: 40 },
+  kicker: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: colors.label,
+    marginTop: 12,
+  },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: 40,
+    lineHeight: 44,
+    letterSpacing: -1,
+    color: colors.ink,
     marginTop: 8,
-    marginBottom: 16,
   },
-  initial: { color: colors.white, fontFamily: fonts.semiBold, fontSize: 22 },
-  title: { fontFamily: fonts.semiBold, fontSize: 28, letterSpacing: -0.6, color: colors.ink },
-  company: { fontFamily: fonts.regular, fontSize: 16, color: colors.muted, marginTop: 6 },
-  salary: { fontFamily: fonts.semiBold, fontSize: 20, color: colors.ink, marginTop: 12 },
-  tags: { fontFamily: fonts.regular, fontSize: 14, color: colors.label, marginTop: 8, lineHeight: 20 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
-  badge: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: colors.white,
+  place: {
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    color: colors.muted,
+    marginTop: 8,
   },
-  badgeText: { fontFamily: fonts.medium, fontSize: 10, color: colors.ink },
-  reply: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 10 },
-  card: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
+  facts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+    marginTop: 28,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  cardLabel: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.ink, marginBottom: 6 },
-  cardBody: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink, marginTop: 2 },
-  muted: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 4 },
+  fact: { minWidth: 88, marginBottom: 16 },
+  factLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.label,
+  },
+  factValue: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.ink,
+    marginTop: 4,
+  },
+  verified: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.ink,
+    marginTop: 18,
+  },
+  section: { marginTop: 28 },
+  sectionLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.label,
+    marginBottom: 10,
+  },
+  prose: {
+    fontFamily: fonts.regular,
+    fontSize: 17,
+    lineHeight: 26,
+    color: colors.ink,
+  },
+  line: {
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  muted: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.muted,
+    marginTop: 6,
+  },
+  reply: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.muted,
+    marginTop: 20,
+  },
   primary: {
-    marginTop: 24,
+    marginTop: 32,
     backgroundColor: colors.black,
     borderRadius: 999,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  primaryText: { color: colors.white, fontFamily: fonts.medium, fontSize: 15 },
-  ghost: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingVertical: 14,
+  primaryText: { color: colors.white, fontFamily: fonts.medium, fontSize: 16 },
+  textAction: {
     alignItems: 'center',
-    backgroundColor: colors.white,
+    paddingVertical: 16,
   },
-  ghostText: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  textActionLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  reports: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  report: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.label,
+  },
+  reportDot: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.label,
+  },
   pressed: { opacity: 0.88 },
 });

@@ -56,7 +56,7 @@ export function MobileQr() {
           <Image
             testID="mobile-qr-image"
             accessibilityLabel="QR code for phone preview"
-            source={{ uri: qrImageSrc(url, 220) }}
+            source={{ uri: qrImageSrc(url, 280) }}
             style={styles.qr}
           />
           <Pressable accessibilityRole="button" onPress={() => void copyUrl()} testID="mobile-qr-url">
@@ -89,6 +89,6 @@ const styles = StyleSheet.create({
   },
   qrTitle: { fontFamily: fonts.semiBold, fontSize: 16, color: colors.ink },
   qrHint: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, textAlign: 'center' },
-  qr: { width: 148, height: 148 },
+  qr: { width: 200, height: 200 },
   qrUrl: { fontFamily: fonts.medium, fontSize: 12, color: colors.ink, textAlign: 'center' },
 });

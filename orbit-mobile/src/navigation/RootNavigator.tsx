@@ -6,34 +6,37 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useAuth } from '../context/AuthContext';
 import { AppliedScreen } from '../screens/AppliedScreen';
 import { AuthScreen } from '../screens/AuthScreen';
-import { AdminHomeScreen } from '../screens/AdminHomeScreen';
-import { AdminJobsScreen } from '../screens/AdminJobsScreen';
-import { AdminPeopleScreen } from '../screens/AdminPeopleScreen';
-import { AdminProfileScreen } from '../screens/AdminProfileScreen';
-import { EmployerDashboardScreen } from '../screens/EmployerDashboardScreen';
+import { ControlScreen } from '../desks/admin/ControlScreen';
+import { JobsScreen as AdminJobsScreen } from '../desks/admin/JobsScreen';
+import { PeopleScreen } from '../desks/admin/PeopleScreen';
+import { StaffScreen } from '../desks/admin/StaffScreen';
+import { EmployerApplicantsScreen } from '../desks/employer/ApplicantsScreen';
+import { EmployerBillingScreen } from '../desks/employer/BillingScreen';
+import { EmployerCompanyScreen } from '../desks/employer/CompanyScreen';
+import { EmployerJobsScreen } from '../desks/employer/JobsScreen';
 import { HomeScreen } from '../screens/HomeScreen';
-import { WalkInsScreen } from '../screens/WalkInsScreen';
 import { JobDetailScreen } from '../screens/JobDetailScreen';
 import { JobsFilterScreen } from '../screens/JobsFilterScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { StartupDetailScreen } from '../screens/StartupDetailScreen';
 import { StartupsFilterScreen } from '../screens/StartupsFilterScreen';
 import type {
   AdminTabParamList,
   AppliedStackParamList,
+  EmployerTabParamList,
   HomeStackParamList,
   MainTabParamList,
   RootStackParamList,
-  WalkInsStackParamList,
 } from './types';
 import { useIsCompact } from '../hyd/useIsCompact';
-import { colors } from '../theme/colors';
+import { colors, elevation } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const AdminTab = createBottomTabNavigator<AdminTabParamList>();
+const EmployerTab = createBottomTabNavigator<EmployerTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
-const WalkInsStack = createNativeStackNavigator<WalkInsStackParamList>();
 const AppliedStack = createNativeStackNavigator<AppliedStackParamList>();
 
 function TabIcon({
@@ -70,16 +73,8 @@ function HomeNavigator() {
       <HomeStack.Screen name="StartupsFilter" component={StartupsFilterScreen} />
       <HomeStack.Screen name="JobsFilter" component={JobsFilterScreen} />
       <HomeStack.Screen name="JobDetail" component={JobDetailScreen} />
+      <HomeStack.Screen name="StartupDetail" component={StartupDetailScreen} />
     </HomeStack.Navigator>
-  );
-}
-
-function WalkInsNavigator() {
-  return (
-    <WalkInsStack.Navigator screenOptions={{ headerShown: false }}>
-      <WalkInsStack.Screen name="WalkInsList" component={WalkInsScreen} />
-      <WalkInsStack.Screen name="JobDetail" component={JobDetailScreen} />
-    </WalkInsStack.Navigator>
   );
 }
 
@@ -130,21 +125,6 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="WalkIns"
-        component={WalkInsNavigator}
-        options={{
-          tabBarButtonTestID: 'tab-walkins',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              label="Walk-ins"
-              active={focused}
-              icon="event"
-              iconActive="event"
-            />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Applied"
         component={AppliedNavigator}
         options={{
@@ -153,8 +133,8 @@ function MainTabs() {
             <TabIcon
               label="Applied"
               active={focused}
-              icon="check-box-outline-blank"
-              iconActive="check-box"
+              icon="assignment"
+              iconActive="assignment-turned-in"
             />
           ),
         }}
@@ -202,7 +182,7 @@ function AdminTabs() {
     >
       <AdminTab.Screen
         name="AdminHome"
-        component={AdminHomeScreen}
+        component={ControlScreen}
         options={{
           tabBarButtonTestID: 'tab-admin-home',
           tabBarIcon: ({ focused }) => (
@@ -212,7 +192,7 @@ function AdminTabs() {
       />
       <AdminTab.Screen
         name="AdminPeople"
-        component={AdminPeopleScreen}
+        component={PeopleScreen}
         options={{
           tabBarButtonTestID: 'tab-admin-people',
           tabBarIcon: ({ focused }) => (
@@ -232,7 +212,7 @@ function AdminTabs() {
       />
       <AdminTab.Screen
         name="AdminProfile"
-        component={AdminProfileScreen}
+        component={StaffScreen}
         options={{
           tabBarButtonTestID: 'tab-admin-profile',
           tabBarIcon: ({ focused }) => (
@@ -241,6 +221,72 @@ function AdminTabs() {
         }}
       />
     </AdminTab.Navigator>
+  );
+}
+
+function EmployerTabs() {
+  const compact = useIsCompact(600);
+  return (
+    <EmployerTab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: [styles.tabBar, compact && styles.tabBarCompact],
+        tabBarButton: ({ href: _href, style, children, ...props }) => (
+          <Pressable
+            {...props}
+            android_ripple={{ color: 'transparent' }}
+            style={(state) => [
+              typeof style === 'function' ? style(state) : style,
+              styles.tabButton,
+            ]}
+          >
+            {children}
+          </Pressable>
+        ),
+      }}
+    >
+      <EmployerTab.Screen
+        name="EmployerJobs"
+        component={EmployerJobsScreen}
+        options={{
+          tabBarButtonTestID: 'employer-nav-jobs',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="Jobs" active={focused} icon="work-outline" iconActive="work" />
+          ),
+        }}
+      />
+      <EmployerTab.Screen
+        name="EmployerApplicants"
+        component={EmployerApplicantsScreen}
+        options={{
+          tabBarButtonTestID: 'employer-nav-candidates',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="Applicants" active={focused} icon="people-outline" iconActive="people" />
+          ),
+        }}
+      />
+      <EmployerTab.Screen
+        name="EmployerBilling"
+        component={EmployerBillingScreen}
+        options={{
+          tabBarButtonTestID: 'employer-nav-billing',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="Billing" active={focused} icon="account-balance-wallet" iconActive="account-balance-wallet" />
+          ),
+        }}
+      />
+      <EmployerTab.Screen
+        name="EmployerCompany"
+        component={EmployerCompanyScreen}
+        options={{
+          tabBarButtonTestID: 'employer-nav-settings',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="Company" active={focused} icon="business" iconActive="business" />
+          ),
+        }}
+      />
+    </EmployerTab.Navigator>
   );
 }
 
@@ -262,7 +308,7 @@ export function RootNavigator() {
           <Stack.Screen
             name="Main"
             component={
-              user.role === 'admin' ? AdminTabs : user.role === 'employer' ? EmployerDashboardScreen : MainTabs
+              user.role === 'admin' ? AdminTabs : user.role === 'employer' ? EmployerTabs : MainTabs
             }
           />
         ) : (
@@ -278,18 +324,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.canvas,
   },
   tabBar: {
-    height: 64,
-    maxHeight: 64,
-    minHeight: 64,
+    height: 68,
+    maxHeight: 68,
+    minHeight: 68,
     flexGrow: 0,
     flexShrink: 0,
-    paddingTop: 4,
-    paddingBottom: 6,
-    borderTopColor: colors.border,
-    backgroundColor: colors.white,
+    paddingTop: 6,
+    paddingBottom: 8,
+    borderTopWidth: 0,
+    backgroundColor: colors.canvas,
     overflow: 'hidden',
   },
   tabBarCompact: {
@@ -311,9 +357,9 @@ const styles = StyleSheet.create({
     gap: 2,
     minWidth: 56,
     maxWidth: 88,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
     overflow: 'hidden',
   },
   tabIconBox: {
@@ -324,7 +370,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tabItemActive: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.white,
+    ...elevation.card,
   },
   tabLabel: {
     fontFamily: fonts.medium,

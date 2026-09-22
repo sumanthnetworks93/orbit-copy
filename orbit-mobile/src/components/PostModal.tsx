@@ -18,7 +18,7 @@ import { incrementProfileStat } from '../services/profileActivity';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
-type Variant = 'startup' | 'job';
+type Variant = 'startup' | 'job' | 'freelance';
 
 type Props = {
   visible: boolean;
@@ -39,7 +39,16 @@ const STARTUP_FIELDS: Field[] = [
   { key: 'name', label: 'Name', placeholder: 'Marble' },
   { key: 'description', label: 'Description', placeholder: 'What are you building?', multiline: true },
   { key: 'category', label: 'Category', placeholder: 'Dev Tools' },
+  { key: 'location', label: 'Location', placeholder: 'HITEC City, Hyderabad' },
   { key: 'openRoles', label: 'Open roles', placeholder: '2', keyboardType: 'number-pad' },
+];
+
+const FREELANCE_FIELDS: Field[] = [
+  { key: 'title', label: 'Gig title', placeholder: 'UI design for a clinic app' },
+  { key: 'company', label: 'Client / company', placeholder: 'Kite Health' },
+  { key: 'location', label: 'Location', placeholder: 'Gachibowli, Hyderabad' },
+  { key: 'tags', label: 'Skills', placeholder: 'Figma · Gig' },
+  { key: 'salary', label: 'Pay', placeholder: '₹8k–₹15k / project' },
 ];
 
 const JOB_FIELDS: Field[] = [
@@ -57,8 +66,8 @@ export function PostModal({ visible, variant, onClose, onPosted }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fields = variant === 'startup' ? STARTUP_FIELDS : JOB_FIELDS;
-  const title = variant === 'startup' ? 'Post a startup' : 'Post a role';
+  const fields = variant === 'startup' ? STARTUP_FIELDS : variant === 'freelance' ? FREELANCE_FIELDS : JOB_FIELDS;
+  const title = variant === 'startup' ? 'Post a startup' : variant === 'freelance' ? 'Post a gig' : 'Post a role';
 
   function updateField(key: string, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -97,6 +106,7 @@ export function PostModal({ visible, variant, onClose, onPosted }: Props) {
             name: values.name.trim(),
             description: values.description.trim(),
             category: values.category.trim(),
+            location: values.location?.trim() || 'Remote',
             openRoles: values.openRoles ? Number(values.openRoles) : 0,
           },
           token,
@@ -112,8 +122,8 @@ export function PostModal({ visible, variant, onClose, onPosted }: Props) {
             title: values.title.trim(),
             company: values.company.trim(),
             location: values.location.trim(),
-            jobType: values.jobType?.trim() || 'Full-time',
-            tags: values.tags?.trim() || '',
+            jobType: variant === 'freelance' ? 'Freelance' : values.jobType?.trim() || 'Full-time',
+            tags: variant === 'freelance' ? `${values.tags?.trim() || 'Gig'} · Freelance` : values.tags?.trim() || '',
             salary: values.salary?.trim() || '',
           },
           token,

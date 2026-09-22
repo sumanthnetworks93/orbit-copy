@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordmark: {
-    fontFamily: fonts.semiBold,
-    color: colors.label,
+    fontFamily: fonts.medium,
+    color: colors.muted,
   },
 });

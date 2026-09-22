@@ -6,11 +6,11 @@ public static class SeedData
 {
     public static readonly Startup[] Startups =
     [
-        new() { Id = 1, Name = "Marble", Description = "Open-source Notion for engineers", Category = "Dev Tools", OpenRoles = 2, Upvotes = 312, Initial = "M", Color = "#3B82F6" },
-        new() { Id = 2, Name = "Verdant", Description = "AI grid optimization for solar farms", Category = "Climate Tech", OpenRoles = 5, Upvotes = 248, Initial = "V", Color = "#22C55E" },
-        new() { Id = 3, Name = "Cadence", Description = "Patient scheduling that learns", Category = "Health", OpenRoles = 1, Upvotes = 196, Initial = "C", Color = "#F97316" },
-        new() { Id = 4, Name = "Ledgerly", Description = "Stablecoin treasury for African SMBs", Category = "Fintech", OpenRoles = 3, Upvotes = 174, Initial = "L", Color = "#A855F7" },
-        new() { Id = 5, Name = "Loop", Description = "Async standups for remote teams", Category = "Productivity", OpenRoles = 2, Upvotes = 152, Initial = "L", Color = "#14B8A6" },
+        new() { Id = 1, Name = "Marble", Description = "Open-source Notion for engineers", Category = "Dev Tools", OpenRoles = 2, Upvotes = 312, Initial = "M", Color = "#3B82F6", Location = "San Francisco" },
+        new() { Id = 2, Name = "Verdant", Description = "AI grid optimization for solar farms", Category = "Climate Tech", OpenRoles = 5, Upvotes = 248, Initial = "V", Color = "#22C55E", Location = "London" },
+        new() { Id = 3, Name = "Cadence", Description = "Patient scheduling that learns", Category = "Health", OpenRoles = 1, Upvotes = 196, Initial = "C", Color = "#F97316", Location = "San Francisco" },
+        new() { Id = 4, Name = "Ledgerly", Description = "Stablecoin treasury for African SMBs", Category = "Fintech", OpenRoles = 3, Upvotes = 174, Initial = "L", Color = "#A855F7", Location = "Lagos" },
+        new() { Id = 5, Name = "Loop", Description = "Async standups for remote teams", Category = "Productivity", OpenRoles = 2, Upvotes = 152, Initial = "L", Color = "#14B8A6", Location = "Remote" },
     ];
 
     public static readonly Job[] Jobs =

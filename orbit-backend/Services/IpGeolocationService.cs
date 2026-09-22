@@ -24,7 +24,8 @@ public record GeoLocationDto(
     string Longitude,
     string Timezone,
     string Flag,
-    string Emoji);
+    string Emoji,
+    string District);
 
 public class IpGeolocationService(
     HttpClient http,
@@ -68,17 +69,19 @@ public class IpGeolocationService(
         var location = root.TryGetProperty("location", out var loc) ? loc : default;
         var timeZone = root.TryGetProperty("time_zone", out var tz) ? tz : default;
 
+        var locEl = location.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ? root : location;
         var result = new GeoLocationDto(
             Read(root, "ip"),
-            Read(location, "city"),
-            Read(location, "state_prov"),
-            Read(location, "country_name"),
-            Read(location, "country_code2"),
-            Read(location, "latitude"),
-            Read(location, "longitude"),
-            Read(timeZone, "name"),
-            Read(location, "country_flag"),
-            Read(location, "country_emoji"));
+            First(locEl, "city", "locality"),
+            First(locEl, "state_prov", "state"),
+            First(locEl, "country_name", "country"),
+            First(locEl, "country_code2", "country_code"),
+            Read(locEl, "latitude"),
+            Read(locEl, "longitude"),
+            First(timeZone, "name", "current_tz_full_name"),
+            Read(locEl, "country_flag"),
+            Read(locEl, "country_emoji"),
+            Read(locEl, "district"));
 
         cache.Set(cacheKey, result, CacheDuration);
         return result;
@@ -108,6 +111,20 @@ public class IpGeolocationService(
         return address.IsIPv4MappedToIPv6 ? address.MapToIPv4().ToString() : address.ToString();
     }
 
+    private static string First(JsonElement element, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var value = Read(element, name);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
+    }
+
     private static string Read(JsonElement element, string name)
     {
         if (element.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
@@ -115,8 +132,16 @@ public class IpGeolocationService(
             return string.Empty;
         }
 
-        return element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString() ?? string.Empty
-            : string.Empty;
+        if (!element.TryGetProperty(name, out var value))
+        {
+            return string.Empty;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString() ?? string.Empty,
+            JsonValueKind.Number => value.ToString(),
+            _ => string.Empty,
+        };
     }
 }

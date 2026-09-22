@@ -11,10 +11,7 @@ builder.Services.AddDbContext<OrbitDbContext>(options =>
 builder.Services.AddSingleton<FirebaseAuthService>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddHttpClient<ExternalStartupSources>();
-builder.Services.AddHttpClient<ExternalJobSources>();
 builder.Services.AddScoped<StartupSyncService>();
-builder.Services.AddScoped<JobSyncService>();
-builder.Services.Configure<JobSyncOptions>(builder.Configuration.GetSection(JobSyncOptions.SectionName));
 builder.Services.Configure<IpGeolocationOptions>(options =>
 {
     builder.Configuration.GetSection(IpGeolocationOptions.SectionName).Bind(options);
@@ -25,8 +22,20 @@ builder.Services.Configure<IpGeolocationOptions>(options =>
 });
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<IpGeolocationService>();
-builder.Services.AddSingleton<JobSyncStatus>();
-builder.Services.AddHostedService<DailyJobSyncService>();
+builder.Services.AddHttpClient();
+builder.Services.Configure<AlertOptions>(options =>
+{
+    builder.Configuration.GetSection(AlertOptions.SectionName).Bind(options);
+    if (string.IsNullOrWhiteSpace(options.DiscordWebhookUrl))
+    {
+        options.DiscordWebhookUrl = builder.Configuration["DISCORD_WEBHOOK_URL"] ?? string.Empty;
+    }
+    if (string.IsNullOrWhiteSpace(options.AdminEmail))
+    {
+        options.AdminEmail = builder.Configuration["ADMIN_ALERT_EMAIL"] ?? "support@orbit.app";
+    }
+});
+builder.Services.AddScoped<LoginAlertService>();
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
@@ -54,18 +63,10 @@ app.Services.GetRequiredService<FirebaseAuthService>().EnsureInitialized();
 app.UseCors();
 app.UseMiddleware<FirebaseAuthMiddleware>();
 
-app.MapGet("/health", (JobSyncStatus jobSync) => Results.Ok(new
+app.MapGet("/health", () => Results.Ok(new
 {
     status = "ok",
     app = "Orbit.Api",
-    jobSync = new
-    {
-        lastStartedAt = jobSync.LastStartedAt,
-        lastSucceededAt = jobSync.LastSucceededAt,
-        lastAdded = jobSync.LastAdded,
-        lastError = jobSync.LastError,
-        nextWindowHours = 24,
-    },
 }));
 app.MapControllers();
 

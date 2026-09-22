@@ -1,17 +1,25 @@
 import { API_BASE_URL } from '../config/api';
-import { mergeHydJobs } from '../hyd/filter';
+import { mergeHydJobs, mergeHydStartups } from '../hyd/filter';
+import { withLocationReconciliation, withStartupLocation } from '../hyd/locationReconcile';
 import { JOB_PAGE_SIZE, previewHydJobs } from '../hyd/previewJobs';
 import { countPostedOnDay, dayKeyInIst, mergeDayCounts } from '../hyd/postedAt';
 import { HYD_JOBS } from '../hyd/seed';
 import type { GeoLocation, Job, JobFilters, PagedJobsResponse, PagedResponse, Startup, StartupFilters } from '../types';
 import { hydratePlatformControls } from './adminControl';
 import { hydrateJobOverrides } from './adminJobs';
+import { hydrateEmployerListings } from './employerJobs';
+import { hydrateAdminProfiles } from './adminModeration';
 
 let adminPlaneReady: Promise<void> | null = null;
 
 function hydrateAdminPlane() {
   if (!adminPlaneReady) {
-    adminPlaneReady = Promise.all([hydratePlatformControls(), hydrateJobOverrides()])
+    adminPlaneReady = Promise.all([
+      hydratePlatformControls(),
+      hydrateJobOverrides(),
+      hydrateEmployerListings(),
+      hydrateAdminProfiles(),
+    ])
       .then(() => undefined)
       .catch(() => undefined);
   }
@@ -41,6 +49,7 @@ function jobsCacheKey(page: number, filters: JobFilters) {
     lateShift: Boolean(filters.lateShift),
     verifiedOnly: Boolean(filters.verifiedOnly),
     walkInOnly: Boolean(filters.walkInOnly),
+    freelanceOnly: Boolean(filters.freelanceOnly),
   });
 }
 
@@ -98,7 +107,7 @@ async function request<T>(path: string, token?: string | null, init?: RequestIni
 }
 
 function mapStartup(raw: Record<string, unknown>): Startup {
-  return {
+  return withStartupLocation({
     id: raw.id as number,
     name: raw.name as string,
     description: raw.description as string,
@@ -107,11 +116,13 @@ function mapStartup(raw: Record<string, unknown>): Startup {
     upvotes: raw.upvotes as number,
     initial: raw.initial as string,
     color: raw.color as string,
-  };
+    location: typeof raw.location === 'string' && raw.location.trim() ? raw.location.trim() : 'Remote',
+    outsideLocation: raw.outsideLocation === true,
+  });
 }
 
 function mapJob(raw: Record<string, unknown>): Job {
-  return {
+  return withLocationReconciliation({
     id: raw.id as number,
     title: raw.title as string,
     company: raw.company as string,
@@ -123,36 +134,50 @@ function mapJob(raw: Record<string, unknown>): Job {
     color: raw.color as string,
     sourceUrl: (raw.sourceUrl as string | null | undefined) ?? null,
     postedAt: typeof raw.postedAt === 'string' ? raw.postedAt : null,
-  };
+    outsideLocation: raw.outsideLocation === true,
+  });
 }
 
 export async function fetchStartups(
   page = 1,
   filters: StartupFilters = { search: '', category: null, hiringOnly: false },
 ): Promise<PagedResponse<Startup>> {
-  const query = buildQuery({
-    page,
-    pageSize: STARTUP_PAGE_SIZE,
-    search: filters.search.trim() || undefined,
-    category: filters.category ?? undefined,
-    hiringOnly: filters.hiringOnly || undefined,
-  });
+  try {
+    const query = buildQuery({
+      page,
+      pageSize: STARTUP_PAGE_SIZE,
+      search: filters.search.trim() || undefined,
+      category: filters.category ?? undefined,
+      hiringOnly: filters.hiringOnly || undefined,
+    });
 
-  const data = await request<{
-    page: number;
-    pageSize: number;
-    totalCount: number;
-    totalPages: number;
-    items: Record<string, unknown>[];
-  }>(`/api/startups${query}`);
+    const data = await request<{
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      totalPages: number;
+      items: Record<string, unknown>[];
+    }>(`/api/startups${query}`);
 
-  return {
-    page: data.page,
-    pageSize: data.pageSize,
-    totalCount: data.totalCount,
-    totalPages: data.totalPages,
-    items: data.items.map(mapStartup),
-  };
+    const items = mergeHydStartups(data.items.map(mapStartup), filters, data.page);
+    const hydCount = data.page === 1 ? items.filter((startup) => startup.id >= 8000).length : 0;
+    return {
+      page: data.page,
+      pageSize: data.pageSize,
+      totalCount: data.totalCount + hydCount,
+      totalPages: data.totalPages,
+      items,
+    };
+  } catch {
+    const items = page === 1 ? mergeHydStartups([], filters, 1) : [];
+    return {
+      page,
+      pageSize: STARTUP_PAGE_SIZE,
+      totalCount: items.length,
+      totalPages: items.length ? 1 : 0,
+      items,
+    };
+  }
 }
 
 export async function fetchStartupFilterOptions(): Promise<string[]> {
@@ -165,6 +190,7 @@ export type CreateStartupInput = {
   description: string;
   category: string;
   openRoles?: number;
+  location?: string;
 };
 
 export async function createStartup(input: CreateStartupInput, token: string): Promise<Startup> {
@@ -181,16 +207,6 @@ export async function upvoteStartup(id: number, token: string): Promise<Startup>
     method: 'POST',
   });
   return mapStartup(data);
-}
-
-export async function syncJobs(): Promise<{ added: number; total: number }> {
-  try {
-    return await request<{ added: number; total: number }>('/api/jobs/sync', null, {
-      method: 'POST',
-    });
-  } catch {
-    return { added: 0, total: 0 };
-  }
 }
 
 export async function fetchJobs(
@@ -210,7 +226,6 @@ export async function fetchJobs(
       pageSize: JOB_PAGE_SIZE,
       search: filters.search.trim() || undefined,
       jobType: filters.jobType ?? undefined,
-      location: filters.location.trim() || undefined,
       remoteOnly: filters.remoteOnly || undefined,
     });
 
@@ -277,10 +292,76 @@ export async function createJob(input: CreateJobInput, token: string) {
   return mapJob(data);
 }
 
+export async function fetchPostedJobs(): Promise<Job[]> {
+  try {
+    const data = await request<{ jobs: Record<string, unknown>[] }>('/api/jobs?page=1&pageSize=50');
+    return data.jobs.map(mapJob);
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchGeoLocation(): Promise<GeoLocation | null> {
   try {
     return await request<GeoLocation>('/api/geo');
   } catch {
     return null;
   }
+}
+
+export type LoginAlertUser = {
+  uid: string;
+  email?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  role?: string;
+};
+
+export type LoginAlertEvent = {
+  id: number;
+  userId: string;
+  email: string | null;
+  name: string | null;
+  role: string;
+  method: string;
+  createdAt: string;
+  discordStatus: string;
+  emailStatus: string;
+};
+
+export type AlertSettings = {
+  discordWebhookUrl: string;
+  adminEmail: string;
+  discordReady: boolean;
+  emailReady: boolean;
+};
+
+export async function reportLoginAlert(user: LoginAlertUser, method: string): Promise<void> {
+  await request('/api/alerts/login', null, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: user.uid,
+      email: user.email ?? null,
+      name: user.name ?? user.displayName ?? null,
+      role: user.role ?? 'seeker',
+      method,
+    }),
+  });
+}
+
+export async function fetchAlertSettings(): Promise<AlertSettings> {
+  return request<AlertSettings>('/api/alerts/settings');
+}
+
+export async function saveAlertSettings(input: { discordWebhookUrl?: string; adminEmail?: string }): Promise<AlertSettings> {
+  return request<AlertSettings>('/api/alerts/settings', null, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function fetchLoginAlerts(): Promise<LoginAlertEvent[]> {
+  return request<LoginAlertEvent[]>('/api/alerts/logins');
 }

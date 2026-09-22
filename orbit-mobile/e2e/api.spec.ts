@@ -23,7 +23,7 @@ test.describe('Jobs API', () => {
     expect(body.url).toBe(`http://${body.ip}:8081/`);
   });
 
-  test('health reports job sync status', async ({ request }) => {
+  test('health reports ok', async ({ request }) => {
     const response = await request.get(`${API}/health`);
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
@@ -40,7 +40,7 @@ test.describe('Jobs API', () => {
     expect(body.city).toEqual(expect.any(String));
   });
 
-  test('lists scraped jobs without an API key', async ({ request }) => {
+  test('lists posted jobs without an API key', async ({ request }) => {
     const response = await request.get(`${API}/api/jobs?page=1&pageSize=5`);
     expect(response.ok()).toBeTruthy();
     const body = await response.json();

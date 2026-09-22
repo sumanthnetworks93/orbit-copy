@@ -1,7 +1,10 @@
 import { useAuth as useClerkAuth, useUser } from '@clerk/expo';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { isClerkConfigured } from '../config/clerk';
 import { hydratePlatformControls } from '../services/adminControl';
 import { hydrateJobOverrides } from '../services/adminJobs';
+import { hydrateEmployerListings } from '../services/employerJobs';
+import { hydrateAdminProfiles } from '../services/adminModeration';
 import {
   getCurrentUser,
   isMockSession,
@@ -32,13 +35,12 @@ function mapClerkUser(user: {
   };
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn, getToken } = useClerkAuth();
-  const { user: clerkUser } = useUser();
+function useMockAuthUser() {
   const [mockUser, setMockUser] = useState<AuthUser | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    void Promise.all([hydratePlatformControls(), hydrateJobOverrides()]);
+    void Promise.all([hydratePlatformControls(), hydrateJobOverrides(), hydrateEmployerListings(), hydrateAdminProfiles()]);
   }, []);
 
   useEffect(() => {
@@ -50,13 +52,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setMockUser(current);
         }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setReady(true);
+      });
 
     return subscribeAuth((nextUser) => {
       setMockUser(isMockSession(nextUser) ? nextUser : null);
     });
   }, []);
 
+  return { mockUser, ready };
+}
+
+function ClerkAuthProvider({ children }: { children: React.ReactNode }) {
+  const { isLoaded, isSignedIn, getToken } = useClerkAuth();
+  const { user: clerkUser } = useUser();
+  const { mockUser } = useMockAuthUser();
   const user = mockUser ?? (isLoaded && isSignedIn && clerkUser ? mapClerkUser(clerkUser) : null);
 
   const value = useMemo<AuthContextValue>(
@@ -70,6 +82,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function LocalAuthProvider({ children }: { children: React.ReactNode }) {
+  const { mockUser, ready } = useMockAuthUser();
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user: mockUser,
+      loading: !ready && !mockUser,
+      idToken: null,
+      refreshToken: async () => null,
+    }),
+    [mockUser, ready],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  if (isClerkConfigured) {
+    return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
+  }
+
+  return <LocalAuthProvider>{children}</LocalAuthProvider>;
 }
 
 export function useAuth() {

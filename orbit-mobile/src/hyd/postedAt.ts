@@ -1,3 +1,5 @@
+import { partitionJobsByLocation } from './locationReconcile';
+
 export function dayKeyInIst(at: Date | string | number): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
@@ -47,14 +49,17 @@ export function mergeDayCounts(api: PostedDayCount[] | undefined, extraJobs: { p
 }
 
 export type JobsFeedRow<T extends { id: number; postedAt?: string | null }> =
-  | { kind: 'day'; key: string; label: string; count: number }
+  | { kind: 'section'; key: string; label: string; hint?: string; count: number }
+  | { kind: 'day'; key: string; label: string; count: number; group: string }
   | { kind: 'job'; job: T };
 
-export function jobsFeedRows<T extends { id: number; postedAt?: string | null }>(
+function appendDayGroups<T extends { id: number; postedAt?: string | null }>(
+  rows: JobsFeedRow<T>[],
   jobs: T[],
   counts: Record<string, number>,
-  now = Date.now(),
-): JobsFeedRow<T>[] {
+  now: number,
+  group: string,
+) {
   const sorted = [...jobs].sort((left, right) => {
     const leftAt = left.postedAt ? Date.parse(left.postedAt) : 0;
     const rightAt = right.postedAt ? Date.parse(right.postedAt) : 0;
@@ -70,16 +75,117 @@ export function jobsFeedRows<T extends { id: number; postedAt?: string | null }>
     else groups.push({ key, items: [job] });
   }
 
-  const rows: JobsFeedRow<T>[] = [];
-  for (const group of groups) {
+  for (const item of groups) {
     rows.push({
       kind: 'day',
-      key: group.key,
-      label: postedDayLabel(group.key, now),
-      count: group.key === 'earlier' ? group.items.length : counts[group.key] ?? group.items.length,
+      key: item.key,
+      label: postedDayLabel(item.key, now),
+      count: item.key === 'earlier' ? item.items.length : counts[item.key] ?? item.items.length,
+      group,
     });
-    for (const job of group.items) {
+    for (const job of item.items) {
       rows.push({ kind: 'job', job });
+    }
+  }
+}
+
+export function jobsFeedRows<T extends { id: number; postedAt?: string | null; location?: string; area?: string; outsideLocation?: boolean }>(
+  jobs: T[],
+  counts: Record<string, number>,
+  now = Date.now(),
+  preferredLocation = '',
+): JobsFeedRow<T>[] {
+  const hasLocation = jobs.some((job) => job.location != null || job.outsideLocation != null);
+  if (!hasLocation) {
+    const rows: JobsFeedRow<T>[] = [];
+    appendDayGroups(rows, jobs, counts, now, 'nearby');
+    return rows;
+  }
+
+  const { matching, other, outside } = partitionJobsByLocation(jobs, preferredLocation);
+  const rows: JobsFeedRow<T>[] = [];
+  const nearbyLabel = preferredLocation ? `In ${preferredLocation}` : 'Nearby';
+  if (matching.length > 0) {
+    rows.push({
+      kind: 'section',
+      key: 'nearby',
+      label: nearbyLabel,
+      hint: preferredLocation ? `Roles in ${preferredLocation}` : 'Roles near you',
+      count: matching.length,
+    });
+    appendDayGroups(rows, matching, counts, now, 'nearby');
+  }
+  if (other.length > 0) {
+    rows.push({
+      kind: 'section',
+      key: 'other',
+      label: 'More local roles',
+      hint: 'Still in Telangana, outside your selected city',
+      count: other.length,
+    });
+    appendDayGroups(rows, other, counts, now, 'other');
+  }
+  if (outside.length > 0) {
+    rows.push({
+      kind: 'section',
+      key: 'outside',
+      label: 'Outside location',
+      hint: 'Roles beyond India and Hyderabad',
+      count: outside.length,
+    });
+    appendDayGroups(rows, outside, counts, now, 'outside');
+  }
+  return rows;
+}
+
+export type StartupFeedRow<T extends { id: number }> =
+  | { kind: 'section'; key: string; label: string; hint?: string; count: number }
+  | { kind: 'startup'; startup: T };
+
+export function startupFeedRows<T extends { id: number; location?: string; area?: string; outsideLocation?: boolean }>(
+  startups: T[],
+  preferredLocation = '',
+): StartupFeedRow<T>[] {
+  const { matching, other, outside } = partitionJobsByLocation(
+    startups.map((startup) => ({ ...startup, location: startup.location ?? '' })),
+    preferredLocation,
+  );
+  const rows: StartupFeedRow<T>[] = [];
+  const nearbyLabel = preferredLocation ? `In ${preferredLocation}` : 'Nearby';
+  if (matching.length > 0) {
+    rows.push({
+      kind: 'section',
+      key: 'nearby',
+      label: nearbyLabel,
+      hint: preferredLocation ? `Startups in ${preferredLocation}` : 'Startups near you',
+      count: matching.length,
+    });
+    for (const startup of matching) {
+      rows.push({ kind: 'startup', startup });
+    }
+  }
+  if (other.length > 0) {
+    rows.push({
+      kind: 'section',
+      key: 'other',
+      label: 'More local startups',
+      hint: 'Still in Telangana, outside your selected city',
+      count: other.length,
+    });
+    for (const startup of other) {
+      rows.push({ kind: 'startup', startup });
+    }
+  }
+  if (outside.length > 0) {
+    rows.push({
+      kind: 'section',
+      key: 'outside',
+      label: 'Outside location',
+      hint: 'Startups beyond India and Hyderabad',
+      count: outside.length,
+    });
+    for (const startup of outside) {
+      rows.push({ kind: 'startup', startup });
     }
   }
   return rows;

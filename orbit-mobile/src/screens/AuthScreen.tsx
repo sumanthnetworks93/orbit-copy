@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
 import { useIsCompact } from '../hyd/useIsCompact';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ClerkAuthActions } from '../components/ClerkAuthActions';
+import { isClerkConfigured } from '../config/clerk';
 import { LegalLinks, LegalSheet } from '../components/LegalSheet';
 import { MobileQr } from '../components/MobileQr';
 import { OrbitBackground } from '../components/OrbitBackground';
@@ -97,14 +99,52 @@ export function AuthScreen() {
         <ScrollView contentContainerStyle={styles.content} bounces={false}>
           <View style={styles.hero}>
             <OrbitLogo />
-            <Text style={styles.title}>Discover startups.{'\n'}Find your next role.</Text>
-            <Text style={styles.subtitle}>
-              A quiet daily feed of what people are building — and who they're hiring.
+            <Text style={styles.title}>
+              Discover startups.{'\n'}
+              <Text style={styles.titleEm}>Find your next role.</Text>
             </Text>
+            <Text style={styles.subtitle}>
+              Hyderabad jobs first. Apply in six fields. No PDF resume.
+            </Text>
+            <View style={styles.chips}>
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>Apply without a PDF</Text>
+              </View>
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>Hyderabad first</Text>
+              </View>
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>Phone stays masked</Text>
+              </View>
+            </View>
           </View>
 
           <View style={styles.buttons}>
-            <Text style={styles.demoLabel}>Always-on demo account</Text>
+            <Text style={styles.demoLabel}>Looking for work?</Text>
+            <Pressable
+              testID="auth-user"
+              accessibilityLabel="Login as user"
+              disabled={loadingProvider !== null}
+              onPress={() => void handleUser()}
+              style={({ pressed }) => [styles.login, pressed && styles.pressed]}
+            >
+              {loadingProvider === 'user' ? (
+                <ActivityIndicator color={colors.ink} />
+              ) : (
+                <Text style={styles.loginText}>Login as user</Text>
+              )}
+            </Pressable>
+            {isE2EMode() || compact ? (
+              <SocialButton
+                provider="github"
+                loading={loadingProvider === 'guest'}
+                onPress={handleGuest}
+                testID="auth-guest"
+                label="Continue as guest"
+              />
+            ) : null}
+
+            <Text style={styles.demoLabel}>Or use email</Text>
             <TextInput
               testID="auth-email"
               value={email}
@@ -135,29 +175,14 @@ export function AuthScreen() {
               style={({ pressed }) => [styles.login, pressed && styles.pressed]}
             >
               {loadingProvider === 'password' ? (
-                <ActivityIndicator color={colors.white} />
+                <ActivityIndicator color={colors.ink} />
               ) : (
                 <Text style={styles.loginText}>Log in</Text>
               )}
             </Pressable>
-            <Text style={styles.demoHint}>
-              User: priya@orbit.app · OrbitDemo1!{'\n'}
-              Or tap Login as user · employer · super admin
-            </Text>
-            <ClerkAuthActions />
-            <Pressable
-              testID="auth-user"
-              accessibilityLabel="Login as user"
-              disabled={loadingProvider !== null}
-              onPress={() => void handleUser()}
-              style={({ pressed }) => [styles.employer, pressed && styles.pressed]}
-            >
-              {loadingProvider === 'user' ? (
-                <ActivityIndicator color={colors.ink} />
-              ) : (
-                <Text style={styles.employerText}>Login as user</Text>
-              )}
-            </Pressable>
+            <Text style={styles.demoHint}>priya@orbit.app · OrbitDemo1!</Text>
+            {isClerkConfigured ? <ClerkAuthActions /> : null}
+            <Text style={styles.demoLabel}>Hiring desk</Text>
             <Pressable
               testID="auth-admin"
               accessibilityLabel="Login as super admin"
@@ -184,22 +209,13 @@ export function AuthScreen() {
                 <Text style={styles.employerText}>Login as employer</Text>
               )}
             </Pressable>
-            {isE2EMode() || compact ? (
-              <SocialButton
-                provider="github"
-                loading={loadingProvider === 'guest'}
-                onPress={handleGuest}
-                testID="auth-guest"
-                label="Continue as guest"
-              />
-            ) : null}
           </View>
 
-          {!compact ? <MobileQr /> : null}
+          {Platform.OS === 'web' ? <MobileQr /> : null}
 
           <View style={styles.legalBlock}>
             <Text style={styles.legal}>
-              By continuing you agree to Orbit's Terms for seekers, Terms for employers, and Privacy Policy. We do not give employers your raw phone number. Read the Privacy Notice for DPDP rights, account deletion, and the WhatsApp relay.
+              By continuing you agree to Orbit's Terms and Privacy Policy. We never hand employers your raw phone number.
             </Text>
             <LegalLinks onOpen={setLegalDoc} />
             <SupportButton />
@@ -214,7 +230,7 @@ export function AuthScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.canvas,
   },
   safe: {
     flex: 1,
@@ -222,29 +238,52 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 28,
-    paddingTop: 48,
-    paddingBottom: 48,
+    paddingTop: 64,
+    paddingBottom: 56,
   },
   hero: {
     alignItems: 'center',
-    gap: 18,
-    marginTop: 24,
+    gap: 20,
+    marginTop: 32,
   },
   title: {
-    fontFamily: fonts.semiBold,
-    fontSize: 34,
-    lineHeight: 40,
-    letterSpacing: -0.8,
+    fontFamily: fonts.display,
+    fontSize: 46,
+    lineHeight: 52,
+    letterSpacing: -1.2,
     textAlign: 'center',
     color: colors.ink,
   },
+  titleEm: {
+    fontFamily: fonts.displayItalic,
+  },
   subtitle: {
     fontFamily: fonts.regular,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 26,
     textAlign: 'center',
     color: colors.muted,
-    maxWidth: 320,
+    maxWidth: 340,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    maxWidth: 360,
+  },
+  chip: {
+    borderRadius: 999,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  chipText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.ink,
   },
   buttons: {
     gap: 12,
@@ -268,27 +307,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   input: {
-    height: 54,
-    borderRadius: 16,
+    height: 56,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.ink,
   },
   login: {
-    height: 54,
+    height: 56,
     borderRadius: 999,
-    backgroundColor: colors.black,
+    backgroundColor: colors.lilac,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loginText: {
     fontFamily: fonts.medium,
     fontSize: 16,
-    color: colors.white,
+    color: colors.ink,
   },
   employer: {
     height: 54,

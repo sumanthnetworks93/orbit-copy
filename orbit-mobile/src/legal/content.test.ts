@@ -21,6 +21,9 @@ describe('legal content', () => {
     expect(getLegalDoc('termsEmployer').sections.map((s) => s.body).join(' ')).toMatch(
       /does not replace any statutory employer obligation/i,
     );
+    expect(getLegalDoc('termsEmployer').sections.map((s) => s.body).join(' ')).toMatch(
+      /Verified by Orbit Support/i,
+    );
     expect(getLegalDoc('notice').sections[0].body).toMatch(/customer database/i);
   });
 

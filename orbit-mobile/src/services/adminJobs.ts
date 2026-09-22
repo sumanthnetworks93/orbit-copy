@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type JobOverride = {
   frozen?: boolean;
   hidden?: boolean;
+  orbitVerified?: boolean;
 };
 
 export type JobOverrides = Record<number, JobOverride>;
@@ -14,7 +15,7 @@ let cache: JobOverrides = {};
 function clean(overrides: JobOverrides): JobOverrides {
   const next: JobOverrides = {};
   Object.entries(overrides).forEach(([id, value]) => {
-    if (value.frozen === undefined && value.hidden === undefined) return;
+    if (value.frozen === undefined && value.hidden === undefined && value.orbitVerified === undefined) return;
     next[Number(id)] = value;
   });
   return next;
@@ -61,6 +62,10 @@ export async function toggleJobFrozen(id: number, currentlyFrozen: boolean): Pro
 
 export async function toggleJobHidden(id: number, currentlyHidden: boolean): Promise<JobOverrides> {
   return setJobOverride(id, { hidden: !currentlyHidden });
+}
+
+export async function toggleJobOrbitVerified(id: number, currentlyVerified: boolean): Promise<JobOverrides> {
+  return setJobOverride(id, { orbitVerified: !currentlyVerified });
 }
 
 export function countOverriddenJobs(overrides: JobOverrides = cache) {

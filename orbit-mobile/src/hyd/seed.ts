@@ -1,4 +1,4 @@
-import type { Job } from '../types';
+import type { Job, Startup } from '../types';
 import type { HydArea } from './areas';
 
 export type WalkIn = {
@@ -47,6 +47,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(1),
     commuteMin: 22,
     postedAt: daysAgo(0),
+    about: 'Ward and night cover at KIMS Gachibowli. Cab from the metro after late rounds. Walk in this week if you have your nursing certificate.',
     walkIn: {
       date: 'Sep 9, 2026',
       time: '10:00 AM – 1:00 PM',
@@ -74,6 +75,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(0),
     commuteMin: 18,
     postedAt: daysAgo(0),
+    about: 'Same-day food drops around Madhapur. Bring your own bike. Pay is weekly, not a desk salary.',
     employerPhone: '914067221101',
   },
   {
@@ -93,6 +95,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(2),
     commuteMin: 15,
     postedAt: daysAgo(0),
+    about: 'Cost and spreadsheet work for Helios in HITEC City. Hybrid days. Excel is the daily tool.',
     employerPhone: '914067221102',
   },
   {
@@ -113,6 +116,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(3),
     commuteMin: 25,
     postedAt: daysAgo(1),
+    about: 'Front desk at AIG Financial District. First voice patients hear. Women-safe floor, metro nearby.',
     walkIn: {
       date: 'Sep 10, 2026',
       time: '9:30 AM – 12:30 PM',
@@ -139,6 +143,7 @@ export const HYD_JOBS: HydJob[] = [
     frozen: true,
     commuteMin: 40,
     postedAt: daysAgo(12),
+    about: 'Night supervision for a Kompally campus. Unverified employer. No reply in over a week.',
     employerPhone: '914067221104',
   },
   {
@@ -158,6 +163,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(1),
     commuteMin: 30,
     postedAt: daysAgo(1),
+    about: 'Counter and stock at Apollo Uppal. D.Pharm required. Evening walk-in at store 14.',
     walkIn: {
       date: 'Sep 8, 2026',
       time: '4:00 PM – 7:00 PM',
@@ -185,6 +191,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(0),
     commuteMin: 12,
     postedAt: daysAgo(0),
+    about: 'LMV cab shifts for Orbit Fleet. Metro pickup in HITEC City. Fuel is extra, not deducted.',
     employerPhone: '914067221106',
   },
   {
@@ -207,6 +214,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(4),
     commuteMin: 20,
     postedAt: daysAgo(4),
+    about: 'Evening voice process in Gachibowli. Cab home after the late shift. Telugu and English both used.',
     employerPhone: '914067221107',
   },
   {
@@ -226,6 +234,7 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(1),
     commuteMin: 16,
     postedAt: daysAgo(1),
+    about: 'Books and GST for Helios in Madhapur. Tally every day. Quiet desk, metro nearby.',
     employerPhone: '914067221102',
   },
   {
@@ -243,7 +252,62 @@ export const HYD_JOBS: HydJob[] = [
     lastReplyAt: daysAgo(2),
     commuteMin: 35,
     postedAt: daysAgo(2),
+    about: 'Part-time shop floor in Secunderabad. Daily cash and stock. Unverified kirana — ask for the owner.',
     employerPhone: '914067221108',
+  },
+  {
+    id: 9101,
+    title: 'UI design gig',
+    company: 'Kite Health',
+    location: 'Gachibowli, Hyderabad',
+    jobType: 'Freelance',
+    tags: 'Freelance · Figma · Gig',
+    salary: '₹8k–₹15k / project',
+    initial: 'K',
+    color: '#1B6B45',
+    area: 'Gachibowli',
+    womenSafe: true,
+    nearMetro: true,
+    lastReplyAt: daysAgo(0),
+    commuteMin: 18,
+    postedAt: daysAgo(0),
+    about: 'Figma screens for a Gachibowli clinic app. Short freelance gig. Pay is per project.',
+    employerPhone: '914067221201',
+  },
+  {
+    id: 9102,
+    title: 'Telugu content writer',
+    company: 'Orbit Fleet',
+    location: 'HITEC City, Hyderabad',
+    jobType: 'Freelance',
+    tags: 'Freelance · Copy · Gig',
+    salary: '₹600–₹1,200 / piece',
+    initial: 'O',
+    color: '#0EA5E9',
+    area: 'HITEC City',
+    nearMetro: true,
+    lastReplyAt: daysAgo(1),
+    commuteMin: 14,
+    postedAt: daysAgo(1),
+    about: 'Telugu lines for Orbit Fleet. Per-piece freelance. Write like people speak in Hyderabad.',
+    employerPhone: '914067221202',
+  },
+  {
+    id: 9103,
+    title: 'React Native bugfix',
+    company: 'Warangal Weave',
+    location: 'Madhapur, Hyderabad',
+    jobType: 'Freelance',
+    tags: 'Freelance · React Native · Gig',
+    salary: '₹12k–₹20k / week',
+    initial: 'W',
+    color: '#8A6A1F',
+    area: 'Madhapur',
+    lastReplyAt: daysAgo(0),
+    commuteMin: 16,
+    postedAt: daysAgo(0),
+    about: 'A week of React Native fixes for Warangal Weave. Freelance. Ship from Madhapur or remote.',
+    employerPhone: '914067221203',
   },
 ];
 
@@ -256,3 +320,47 @@ export function isGhostFrozen(job: HydJob, now = Date.now()): boolean {
 export function walkInJobs(jobs: HydJob[] = HYD_JOBS): HydJob[] {
   return jobs.filter((job) => job.walkIn && !isGhostFrozen(job));
 }
+
+export type HydStartup = Startup & {
+  location: string;
+  area?: string;
+};
+
+export const HYD_STARTUPS: HydStartup[] = [
+  {
+    id: 8001,
+    name: 'Kite Health',
+    description: 'Telugu voice follow-ups for Hyderabad clinics',
+    category: 'Health',
+    openRoles: 3,
+    upvotes: 188,
+    initial: 'K',
+    color: '#1B6B45',
+    location: 'Gachibowli, Hyderabad',
+    area: 'Gachibowli',
+  },
+  {
+    id: 8002,
+    name: 'Orbit Fleet',
+    description: 'Last-mile logistics for HITEC City offices',
+    category: 'Logistics',
+    openRoles: 4,
+    upvotes: 164,
+    initial: 'O',
+    color: '#0EA5E9',
+    location: 'HITEC City, Hyderabad',
+    area: 'HITEC City',
+  },
+  {
+    id: 8003,
+    name: 'Warangal Weave',
+    description: 'Marketplace for Warangal handloom weavers',
+    category: 'Commerce',
+    openRoles: 2,
+    upvotes: 121,
+    initial: 'W',
+    color: '#8A6A1F',
+    location: 'Warangal, Telangana',
+    area: 'Warangal',
+  },
+];

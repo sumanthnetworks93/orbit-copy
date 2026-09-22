@@ -11,7 +11,9 @@ const SEEKER_KEYS = [
   'orbit_profile_display_name',
   'orbit_profile_notifications',
   'orbit_saved_startups',
+  'orbit_voted_startup_ids',
   'orbit_job_reports',
+  'orbit_onboarding_done',
 ];
 
 export async function closeSeekerAccount(): Promise<void> {

@@ -4,7 +4,7 @@ import { t } from './i18n';
 describe('i18n', () => {
   it('returns English copy by default', () => {
     expect(t('en').jobs).toBe('Jobs');
-    expect(t('en').whatsapp).toBe('WhatsApp');
+    expect(t('en').verified).toBe('Verified by Orbit Support');
   });
 
   it('returns Telugu labels without dropping keys', () => {

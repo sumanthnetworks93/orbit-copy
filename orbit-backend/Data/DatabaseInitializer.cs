@@ -9,6 +9,7 @@ public static class DatabaseInitializer
         await db.Database.EnsureCreatedAsync();
         await EnsureStartupColumnsAsync(db);
         await EnsureJobColumnsAsync(db);
+        await EnsureAlertTablesAsync(db);
     }
 
     private static async Task EnsureStartupColumnsAsync(OrbitDbContext db)
@@ -41,6 +42,14 @@ public static class DatabaseInitializer
         {
             await db.Database.ExecuteSqlRawAsync("ALTER TABLE Startups ADD COLUMN SourceUrl TEXT NULL;");
         }
+
+        if (!columns.Contains("Location"))
+        {
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE Startups ADD COLUMN Location TEXT NOT NULL DEFAULT 'Remote';");
+        }
+
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE Startups SET Location = 'Remote' WHERE Location IS NULL OR TRIM(Location) = '';");
 
         await db.Database.ExecuteSqlRawAsync(
             "CREATE UNIQUE INDEX IF NOT EXISTS IX_Startups_ExternalKey ON Startups(ExternalKey) WHERE ExternalKey IS NOT NULL;");
@@ -121,5 +130,32 @@ public static class DatabaseInitializer
 
         await db.Database.ExecuteSqlRawAsync(
             "CREATE UNIQUE INDEX IF NOT EXISTS IX_Jobs_ExternalKey ON Jobs(ExternalKey) WHERE ExternalKey IS NOT NULL;");
+
+        await db.Database.ExecuteSqlRawAsync("DELETE FROM Jobs WHERE ExternalKey IS NOT NULL;");
+    }
+
+    private static async Task EnsureAlertTablesAsync(OrbitDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS LoginEvents (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                UserId TEXT NOT NULL,
+                Email TEXT NULL,
+                Name TEXT NULL,
+                Role TEXT NOT NULL,
+                Method TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL,
+                DiscordStatus TEXT NOT NULL,
+                EmailStatus TEXT NOT NULL
+            );
+            """);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS AlertSettings (
+                Id INTEGER PRIMARY KEY NOT NULL,
+                DiscordWebhookUrl TEXT NOT NULL,
+                AdminEmail TEXT NOT NULL
+            );
+            """);
     }
 }

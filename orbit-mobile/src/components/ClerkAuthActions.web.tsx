@@ -1,11 +1,16 @@
 import { SignIn, SignUp } from '@clerk/expo/web';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { isClerkConfigured } from '../config/clerk';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
 export function ClerkAuthActions() {
   const [panel, setPanel] = useState<'sign-in' | 'sign-up' | null>(null);
+
+  if (!isClerkConfigured) {
+    return null;
+  }
 
   if (panel) {
     return (

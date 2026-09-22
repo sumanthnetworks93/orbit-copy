@@ -12,4 +12,5 @@ public class Startup
     public string Color { get; set; } = "#3B82F6";
     public string? ExternalKey { get; set; }
     public string? SourceUrl { get; set; }
+    public string Location { get; set; } = "Remote";
 }

@@ -9,19 +9,34 @@ test.describe('Hyderabad hiring layer', () => {
 
   test('shows social buttons and seeded jobs', async ({ page }) => {
     await expect(page.getByTestId('hyd-area-row')).toHaveCount(0);
+    await page.getByTestId('jobs-screen').getByTestId('social-footer').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('jobs-screen').getByTestId('social-footer')).toBeVisible();
     await expect(page.getByTestId('social-whatsapp')).toBeVisible();
     await expect(page.getByTestId('social-instagram')).toBeVisible();
     await expect(page.getByTestId('social-linkedin')).toBeVisible();
     await expect(page.getByTestId('social-x')).toBeVisible();
     await expect(page.getByTestId('job-row-9001')).toContainText('Staff Nurse');
+    await expect(page.getByTestId('job-orbit-verified-9001')).toHaveCount(0);
+    await expect(page.getByTestId('job-orbit-verified-7101')).toHaveText('Verified by Orbit Support');
     await expect(page.getByTestId('jobs-day-today').first()).toBeVisible();
     await expect(page.getByTestId('jobs-day-today').first()).toContainText('posted');
     await expect(page.getByTestId('feed-meta').first()).toContainText('POSTED TODAY');
-    await expect(page.getByTestId('job-row-9001')).toContainText('Verified employer');
+    await expect(page.getByTestId('job-row-9001')).not.toContainText('Verified by Orbit Support');
     await expect(page.getByTestId('job-wa-9001')).toHaveCount(0);
     await expect(page.getByTestId('job-row-9001').getByText('WhatsApp')).toHaveCount(0);
     await expect(page.getByTestId('job-row-9005')).toHaveCount(0);
+    await expect(page.getByTestId('job-row-9101')).toHaveCount(0);
+  });
+
+  test('opens startup detail from a row and returns to the feed', async ({ page }) => {
+    await page.getByTestId('segment-startups').click();
+    await expect(page.getByTestId('startup-row-8001')).toBeVisible();
+    await page.getByTestId('startup-row-8001').click();
+    await expect(page.getByTestId('startup-detail')).toBeVisible();
+    await expect(page.getByTestId('startup-detail')).toContainText('Kite Health');
+    await expect(page.getByTestId('startup-detail-about')).toContainText('Telugu voice follow-ups');
+    await page.getByTestId('startup-detail-back').click();
+    await expect(page.getByTestId('startups-screen')).toBeVisible();
   });
 
   test('opens job detail from a row and returns to the feed', async ({ page }) => {
@@ -34,6 +49,7 @@ test.describe('Hyderabad hiring layer', () => {
     await expect(page.getByTestId('job-detail-whatsapp')).toHaveCount(0);
     await page.getByTestId('job-subscribe-matches').click();
     await expect(page.getByTestId('job-subscribe-matches')).toContainText('Subscribed');
+    await page.getByTestId('job-detail').getByTestId('social-footer').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('job-detail').getByTestId('social-footer')).toBeVisible();
     await page.getByTestId('job-detail-back').click();
     await expect(page.getByTestId('jobs-screen')).toBeVisible();
@@ -64,13 +80,9 @@ test.describe('Hyderabad hiring layer', () => {
     await expect(page.getByTestId('job-row-9002')).toBeVisible();
   });
 
-  test('applies from a walk-in and shows the job under Applied', async ({ page }) => {
-    await page.getByTestId('tab-walkins').click();
-    await expect(page.getByTestId('walkins-screen')).toBeVisible();
-    await expect(page.getByTestId('walkin-9001')).toContainText('KIMS Gachibowli');
-    await expect(page.getByTestId('walkins-screen').getByTestId('social-footer')).toBeVisible();
-
-    await page.getByTestId('walkin-9001').getByTestId('job-apply-9001').click();
+  test('applies from the feed and shows the job under Applied', async ({ page }) => {
+    await expect(page.getByTestId('job-row-9001')).toBeVisible();
+    await page.getByTestId('job-row-9001').getByTestId('job-apply-9001').click();
     await fillEasyApply(page);
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByTestId('apply-submit').click();

@@ -96,6 +96,7 @@ public class StartupsController(OrbitDbContext db, CurrentUser currentUser, Star
             Upvotes = 0,
             Initial = BrandColors.Initial(name),
             Color = BrandColors.Pick(name),
+            Location = string.IsNullOrWhiteSpace(request.Location) ? "Remote" : request.Location.Trim(),
         };
 
         db.Startups.Add(startup);
@@ -133,7 +134,7 @@ public class StartupsController(OrbitDbContext db, CurrentUser currentUser, Star
     }
 }
 
-public record CreateStartupRequest(string Name, string Description, string Category, int? OpenRoles);
+public record CreateStartupRequest(string Name, string Description, string Category, int? OpenRoles, string? Location);
 
 public record StartupFiltersResponse(IReadOnlyList<string> Categories);
 
@@ -145,8 +146,20 @@ public record StartupDto(
     int OpenRoles,
     int Upvotes,
     string Initial,
-    string Color)
+    string Color,
+    string Location,
+    bool OutsideLocation)
 {
     public static StartupDto From(Startup s) =>
-        new(s.Id, s.Name, s.Description, s.Category, s.OpenRoles, s.Upvotes, s.Initial, s.Color);
+        new(
+            s.Id,
+            s.Name,
+            s.Description,
+            s.Category,
+            s.OpenRoles,
+            s.Upvotes,
+            s.Initial,
+            s.Color,
+            string.IsNullOrWhiteSpace(s.Location) ? "Remote" : s.Location,
+            LocationReconcile.IsOutside(s.Location));
 }

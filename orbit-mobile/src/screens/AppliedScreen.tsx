@@ -61,7 +61,7 @@ export function AppliedScreen() {
         {jobs.length === 0 ? (
           <View style={styles.empty}>
             <View style={styles.emptyIcon}>
-              <MaterialIcons name="check" size={28} color={colors.label} />
+              <MaterialIcons name="assignment-turned-in" size={28} color={colors.label} />
             </View>
             <Text style={styles.emptyTitle}>No applications yet</Text>
             <Text style={styles.emptyCopy}>
@@ -88,9 +88,9 @@ export function AppliedScreen() {
             )}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
+            ListFooterComponent={<SocialFooter />}
           />
         )}
-        <SocialFooter />
       </SafeAreaView>
     </View>
   );
@@ -109,21 +109,23 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
   eyebrow: {
-    fontFamily: fonts.semiBold,
+    fontFamily: fonts.medium,
     fontSize: 11,
-    letterSpacing: 1.8,
+    letterSpacing: 2.4,
     color: colors.label,
-    marginBottom: 8,
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   title: {
-    fontFamily: fonts.semiBold,
-    fontSize: 34,
-    letterSpacing: -0.8,
+    fontFamily: fonts.display,
+    fontSize: 42,
+    letterSpacing: -1.1,
     color: colors.ink,
+    lineHeight: 46,
   },
   empty: {
     flex: 1,

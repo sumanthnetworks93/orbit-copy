@@ -82,7 +82,7 @@ export function JobsFilterScreen({ navigation, route }: Props) {
   function applyFilters() {
     navigation.navigate({
       name: 'Feed',
-      params: { mode: 'jobs', jobFilters: draft },
+      params: { mode: route.params.mode ?? 'jobs', jobFilters: draft },
       merge: true,
     });
   }
@@ -100,7 +100,9 @@ export function JobsFilterScreen({ navigation, route }: Props) {
             <MaterialIcons name="arrow-back" size={22} color={colors.ink} />
             <Text style={styles.backLabel}>Back</Text>
           </Pressable>
-          <Text style={styles.title} testID="jobs-filter-title">Filter jobs</Text>
+          <Text style={styles.title} testID="jobs-filter-title">
+            {route.params.mode === 'freelance' ? 'Filter gigs' : 'Filter jobs'}
+          </Text>
           <Text style={styles.subtitle}>
             {countActiveJobFilters(draft)} active filter
             {countActiveJobFilters(draft) === 1 ? '' : 's'}
@@ -188,7 +190,7 @@ export function JobsFilterScreen({ navigation, route }: Props) {
           />
           <Toggle
             label={copy.verified}
-            helper="GST-verified employers only"
+            helper="Orbit Support verified listings only"
             value={Boolean(draft.verifiedOnly)}
             onValue={(verifiedOnly) => setDraft((current) => ({ ...current, verifiedOnly }))}
           />

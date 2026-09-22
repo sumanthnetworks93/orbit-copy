@@ -8,7 +8,7 @@ namespace Orbit.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class JobsController(OrbitDbContext db, CurrentUser currentUser, JobSyncService sync) : ControllerBase
+public class JobsController(OrbitDbContext db, CurrentUser currentUser) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PagedJobsResponse>> GetAll(
@@ -115,7 +115,7 @@ public class JobsController(OrbitDbContext db, CurrentUser currentUser, JobSyncS
             Company = company,
             Location = request.Location.Trim(),
             JobType = string.IsNullOrWhiteSpace(request.JobType) ? "Full-time" : request.JobType.Trim(),
-            Tags = request.Tags?.Trim() ?? string.Empty,
+            Tags = LocationReconcile.ApplyTag(request.Location, request.Tags),
             Salary = request.Salary?.Trim() ?? string.Empty,
             Initial = BrandColors.Initial(company),
             Color = BrandColors.Pick(company),
@@ -126,14 +126,6 @@ public class JobsController(OrbitDbContext db, CurrentUser currentUser, JobSyncS
         await db.SaveChangesAsync(cancellationToken);
 
         return Ok(JobDto.From(job));
-    }
-
-    [HttpPost("sync")]
-    public async Task<ActionResult<object>> Sync(CancellationToken cancellationToken)
-    {
-        var added = await sync.SyncAsync(cancellationToken);
-        var total = await db.Jobs.CountAsync(cancellationToken);
-        return Ok(new { added, total, sources = new[] { "RemoteOK", "Remotive", "Arbeitnow", "Himalayas" } });
     }
 }
 
@@ -172,8 +164,21 @@ public record JobDto(
     string Initial,
     string Color,
     string? SourceUrl,
-    DateTime? PostedAt)
+    DateTime? PostedAt,
+    bool OutsideLocation)
 {
     public static JobDto From(Models.Job j) =>
-        new(j.Id, j.Title, j.Company, j.Location, j.JobType, j.Tags, j.Salary, j.Initial, j.Color, j.SourceUrl, j.PostedAt);
+        new(
+            j.Id,
+            j.Title,
+            j.Company,
+            j.Location,
+            j.JobType,
+            LocationReconcile.ApplyTag(j.Location, j.Tags),
+            j.Salary,
+            j.Initial,
+            j.Color,
+            j.SourceUrl,
+            j.PostedAt,
+            LocationReconcile.IsOutside(j.Location));
 }

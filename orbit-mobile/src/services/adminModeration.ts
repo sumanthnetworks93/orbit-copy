@@ -15,7 +15,7 @@ export type AdminProfile = {
 
 const KEY = 'orbit_admin_profiles';
 
-const SEED: AdminProfile[] = [
+export const ADMIN_PROFILE_SEED: AdminProfile[] = [
   {
     id: 'ap-0',
     name: 'Sarah Bennett',
@@ -23,7 +23,7 @@ const SEED: AdminProfile[] = [
     company: 'Helios Health',
     email: 'sarah@helios.health',
     status: 'verified',
-    note: 'Demo employer — verified for hiring desk',
+    note: 'Verified by Orbit Support',
   },
   {
     id: 'ap-1',
@@ -55,26 +55,45 @@ const SEED: AdminProfile[] = [
     company: 'Kakatiya Multi-Speciality',
     email: 'hr@kakatiya.test',
     status: 'verified',
-    note: 'GST matches shop photo',
+    note: 'Verified by Orbit Support',
   },
 ];
+
+let cache: AdminProfile[] = ADMIN_PROFILE_SEED;
+
+export function getAdminProfilesSync(): AdminProfile[] {
+  return cache;
+}
+
+export function setAdminProfilesSync(next: AdminProfile[]) {
+  cache = next;
+  return cache;
+}
 
 export async function getAdminProfiles(): Promise<AdminProfile[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) {
-      await AsyncStorage.setItem(KEY, JSON.stringify(SEED));
-      return SEED;
+      cache = ADMIN_PROFILE_SEED;
+      await AsyncStorage.setItem(KEY, JSON.stringify(cache));
+      return cache;
     }
-    return JSON.parse(raw) as AdminProfile[];
+    cache = JSON.parse(raw) as AdminProfile[];
+    return cache;
   } catch {
-    return SEED;
+    cache = ADMIN_PROFILE_SEED;
+    return cache;
   }
 }
 
+export async function hydrateAdminProfiles(): Promise<AdminProfile[]> {
+  return getAdminProfiles();
+}
+
 async function saveAdminProfiles(next: AdminProfile[]): Promise<AdminProfile[]> {
-  await AsyncStorage.setItem(KEY, JSON.stringify(next));
-  return next;
+  cache = next;
+  await AsyncStorage.setItem(KEY, JSON.stringify(cache));
+  return cache;
 }
 
 export async function reviewAdminProfile(
@@ -84,7 +103,15 @@ export async function reviewAdminProfile(
 ): Promise<AdminProfile[]> {
   const profiles = await getAdminProfiles();
   return saveAdminProfiles(
-    profiles.map((profile) => (profile.id === id ? { ...profile, status, note } : profile)),
+    profiles.map((profile) =>
+      profile.id === id
+        ? {
+            ...profile,
+            status,
+            note: note ?? (status === 'verified' ? 'Verified by Orbit Support' : profile.note),
+          }
+        : profile,
+    ),
   );
 }
 
@@ -117,4 +144,13 @@ export function verifiedAdminProfiles(profiles: AdminProfile[]): AdminProfile[] 
 
 export function suspendedAdminProfiles(profiles: AdminProfile[]): AdminProfile[] {
   return profiles.filter((profile) => Boolean(profile.suspended));
+}
+
+export function isCompanyVerifiedByOrbitSupport(company?: string, profiles: AdminProfile[] = cache): boolean {
+  const needle = company?.trim().toLowerCase();
+  if (!needle) return false;
+  return verifiedAdminProfiles(profiles).some(
+    (profile) =>
+      profile.role === 'employer' && (profile.company ?? '').trim().toLowerCase() === needle,
+  );
 }

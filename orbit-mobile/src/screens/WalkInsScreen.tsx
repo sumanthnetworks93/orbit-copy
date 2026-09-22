@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,22 +9,23 @@ import { JobRow } from '../components/JobRow';
 import { OrbitBackground } from '../components/OrbitBackground';
 import { useLanguage } from '../hyd/LanguageContext';
 import { visibleWalkInJobs } from '../hyd/filter';
-import type { WalkInsStackParamList } from '../navigation/types';
+import type { HomeStackParamList } from '../navigation/types';
 import { hydratePlatformControls } from '../services/adminControl';
 import { hydrateJobOverrides } from '../services/adminJobs';
+import { hydrateAdminProfiles } from '../services/adminModeration';
 import type { Job } from '../types';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
 export function WalkInsScreen() {
   const { copy } = useLanguage();
-  const navigation = useNavigation<NativeStackNavigationProp<WalkInsStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const [jobs, setJobs] = useState(() => visibleWalkInJobs());
   const [applyJob, setApplyJob] = useState<Job | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      void Promise.all([hydrateJobOverrides(), hydratePlatformControls()]).then(() => {
+      void Promise.all([hydrateJobOverrides(), hydratePlatformControls(), hydrateAdminProfiles()]).then(() => {
         setJobs(visibleWalkInJobs());
       });
     }, []),
@@ -35,6 +36,14 @@ export function WalkInsScreen() {
       <OrbitBackground theme="dots" />
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
+          <Pressable
+            testID="walkins-back"
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+            accessibilityLabel="Back to Saved"
+          >
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
           <Text style={styles.eyebrow}>HYDERABAD THIS WEEK</Text>
           <Text style={styles.title}>{copy.walkins}</Text>
           <Text style={styles.sub}>Date, time, venue, who to ask for. No 3-week recruiter loop.</Text>
@@ -56,8 +65,8 @@ export function WalkInsScreen() {
               />
             </View>
           ))}
+          <SocialFooter message="Hyderabad walk-in drives this week on Orbit." />
         </ScrollView>
-        <SocialFooter message="Hyderabad walk-in drives this week on Orbit." />
         <ApplySheet job={applyJob} visible={applyJob !== null} onClose={() => setApplyJob(null)} />
       </SafeAreaView>
     </View>
@@ -68,9 +77,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.canvas },
   safe: { flex: 1 },
   listView: { flex: 1 },
-  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12, backgroundColor: colors.canvas, zIndex: 1 },
-  eyebrow: { fontFamily: fonts.semiBold, fontSize: 11, letterSpacing: 1.6, color: colors.label },
-  title: { fontFamily: fonts.semiBold, fontSize: 34, letterSpacing: -0.8, color: colors.ink, marginTop: 6 },
+  header: { paddingHorizontal: 24, paddingTop: 14, paddingBottom: 8, backgroundColor: colors.canvas, zIndex: 1 },
+  back: { alignSelf: 'flex-start', marginBottom: 10, paddingVertical: 4 },
+  backText: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  pressed: { opacity: 0.72 },
+  eyebrow: { fontFamily: fonts.medium, fontSize: 11, letterSpacing: 2.4, color: colors.label, textTransform: 'uppercase' },
+  title: { fontFamily: fonts.display, fontSize: 42, letterSpacing: -1.1, color: colors.ink, marginTop: 6, lineHeight: 46 },
   sub: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted, marginTop: 6 },
   list: { paddingHorizontal: 24, paddingBottom: 24 },
   card: {

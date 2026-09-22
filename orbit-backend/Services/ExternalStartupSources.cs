@@ -161,6 +161,7 @@ public partial class ExternalStartupSources(HttpClient http)
             Color = ColorFor(key),
             ExternalKey = key,
             SourceUrl = hit.Url ?? $"https://news.ycombinator.com/item?id={hit.ObjectId}",
+            Location = InferLocation(name, description),
         };
     }
 
@@ -182,6 +183,7 @@ public partial class ExternalStartupSources(HttpClient http)
             Color = ColorFor(key),
             ExternalKey = key,
             SourceUrl = repo.HtmlUrl,
+            Location = InferLocation(repo.Name, repo.Description, repo.FullName),
         };
     }
 
@@ -214,6 +216,7 @@ public partial class ExternalStartupSources(HttpClient http)
             Color = ColorFor(key),
             ExternalKey = key,
             SourceUrl = company.Url ?? company.Website,
+            Location = ResolveYcLocation(company.AllLocations, company.Name, description),
         };
     }
 
@@ -267,6 +270,39 @@ public partial class ExternalStartupSources(HttpClient http)
         }
 
         return body.Length > 0 ? (body, "Launched on Hacker News") : null;
+    }
+
+    private static string ResolveYcLocation(string? allLocations, string name, string description)
+    {
+        if (!string.IsNullOrWhiteSpace(allLocations))
+        {
+            var first = allLocations
+                .Split([';', '|'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(first))
+            {
+                return first;
+            }
+        }
+
+        return InferLocation(name, description, allLocations);
+    }
+
+    private static string InferLocation(params string?[] parts)
+    {
+        var haystack = string.Join(' ', parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+        if (LocationReconcile.IsIndiaHyderabadLocation(haystack))
+        {
+            var normalized = haystack.ToLowerInvariant();
+            if (normalized.Contains("hyderabad") || normalized.Contains("secunderabad") || normalized.Contains("hitec") || normalized.Contains("hitech"))
+            {
+                return "Hyderabad, Telangana";
+            }
+
+            return "Telangana";
+        }
+
+        return "Remote";
     }
 
     private static string InferCategory(string name, string description)
@@ -398,5 +434,8 @@ public partial class ExternalStartupSources(HttpClient http)
 
         [JsonPropertyName("launched_at")]
         public int LaunchedAt { get; set; }
+
+        [JsonPropertyName("all_locations")]
+        public string? AllLocations { get; set; }
     }
 }

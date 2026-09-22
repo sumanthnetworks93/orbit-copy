@@ -12,6 +12,12 @@ test.describe('Customer job feed', () => {
     await page.getByTestId('segment-startups').click();
     await expect(page.getByTestId('startups-screen')).toBeVisible();
     await expect(page.getByText('Startups', { exact: true }).first()).toBeVisible();
+
+    await page.getByTestId('segment-freelance').click();
+    await expect(page.getByTestId('freelance-screen')).toBeVisible();
+    await expect(page.getByText('Freelance', { exact: true }).first()).toBeVisible();
+    await expect(page.getByTestId('job-row-9101')).toBeVisible();
+    await expect(page.getByTestId('job-row-9001')).toHaveCount(0);
   });
 
   test('guest can filter jobs by location', async ({ page }) => {

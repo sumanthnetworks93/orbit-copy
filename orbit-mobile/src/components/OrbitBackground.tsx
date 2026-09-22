@@ -32,17 +32,17 @@ function BlobsBackground() {
     <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
       <Defs>
         <LinearGradient id="blob1" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#FFD6CC" stopOpacity="0.55" />
-          <Stop offset="1" stopColor="#FFE8D6" stopOpacity="0.2" />
+          <Stop offset="0" stopColor="#E8E4FF" stopOpacity="0.45" />
+          <Stop offset="1" stopColor="#F7F4EC" stopOpacity="0.1" />
         </LinearGradient>
         <LinearGradient id="blob2" x1="1" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#D4F5E9" stopOpacity="0.5" />
-          <Stop offset="1" stopColor="#E8F4FF" stopOpacity="0.15" />
+          <Stop offset="0" stopColor="#F2E6D4" stopOpacity="0.4" />
+          <Stop offset="1" stopColor="#F7F4EC" stopOpacity="0.08" />
         </LinearGradient>
       </Defs>
       <Circle cx="80" cy="120" r="120" fill="url(#blob1)" />
       <Circle cx="340" cy="280" r="150" fill="url(#blob2)" />
-      <Circle cx="300" cy="640" r="110" fill="#E8E0FF" opacity={0.35} />
+      <Circle cx="300" cy="640" r="110" fill="#E8E4FF" opacity={0.22} />
     </Svg>
   );
 }

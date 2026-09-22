@@ -64,6 +64,7 @@ export function isTelanganaDistrict(value: string): value is TelanganaDistrict {
 }
 
 export function districtForArea(area: string): TelanganaDistrict {
+  if (isTelanganaDistrict(area)) return area;
   return AREA_TO_DISTRICT[area] ?? 'Hyderabad';
 }
 

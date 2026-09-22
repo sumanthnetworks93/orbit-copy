@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SEEKER
+  RECRUITER
+  ADMIN
+}
+
+enum CompanyType {
+  IT
+  ITES
+  PHARMA
+  BPO
+  RETAIL
+  GIG
+  HOSPITAL
+  STARTUP
+}
+
+enum SalaryPeriod {
+  LPA
+  MONTHLY
+}
+
+enum Shift {
+  DAY
+  NIGHT
+  ROTATIONAL
+}
+
+enum JobStatus {
+  OPEN
+  PAUSED
+  REMOVED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  REJECTED
+  INTERVIEW
+  HIRED
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTIONED
+}
+
+enum MetroLine {
+  BLUE
+  RED
+  GREEN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  phone        String   @unique
+  role         Role     @default(SEEKER)
+  name         String?
+  locale       String   @default("en")
+  createdAt    DateTime @default(now())
+  seeker       SeekerProfile?
+  companyId    String?
+  company      Company? @relation(fields: [companyId], references: [id])
+  jobsPosted   Job[]
+  applications Application[]
+  savedJobs    SavedJob[]
+  reports      JobReport[]
+  alerts       JobAlert[]
+  refreshTokens RefreshToken[]
+}
+
+model SeekerProfile {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locality        String  @default("HITEC City")
+  experienceYears Int     @default(0)
+  headline        String?
+  skills          String  @default("")
+  resumeKey       String?
+  resumeName      String?
+  resumeMime      String?
+}
+
+model Company {
+  id        String      @id @default(cuid())
+  name      String
+  type      CompanyType
+  verified  Boolean     @default(false)
+  gstin     String?
+  about     String      @default("")
+  locality  String
+  users     User[]
+  jobs      Job[]
+}
+
+model Job {
+  id               String        @id @default(cuid())
+  companyId        String
+  company          Company       @relation(fields: [companyId], references: [id])
+  recruiterId      String
+  recruiter        User          @relation(fields: [recruiterId], references: [id])
+  title            String
+  titleTe          String
+  titleHi          String
+  description      String
+  descriptionTe    String
+  descriptionHi    String
+  locality         String
+  metroStation     String
+  metroLine        MetroLine
+  commuteMin       Int
+  salaryMin        Decimal       @db.Decimal(10, 2)
+  salaryMax        Decimal       @db.Decimal(10, 2)
+  salaryPeriod     SalaryPeriod
+  experienceMin    Int           @default(0)
+  experienceMax    Int           @default(2)
+  shift            Shift         @default(DAY)
+  workFromHome     Boolean       @default(false)
+  cabFacility      Boolean       @default(false)
+  trainingProvided Boolean       @default(false)
+  noExperience     Boolean       @default(false)
+  immediateJoiner  Boolean       @default(false)
+  companyType      CompanyType
+  status           JobStatus     @default(OPEN)
+  postedAt         DateTime      @default(now())
+  searchText       String        @default("")
+  walkIn           WalkIn?
+  applications     Application[]
+  savedBy          SavedJob[]
+  reports          JobReport[]
+
+  @@index([locality, status])
+  @@index([companyType, status])
+  @@index([postedAt])
+}
+
+model WalkIn {
+  id           String   @id @default(cuid())
+  jobId        String   @unique
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  date         DateTime
+  startTime    String
+  endTime      String
+  venue        String
+  documents    String
+  contactName  String
+  contactPhone String
+}
+
+model Application {
+  id        String            @id @default(cuid())
+  seekerId  String
+  seeker    User              @relation(fields: [seekerId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status    ApplicationStatus @default(APPLIED)
+  note      String            @default("")
+  createdAt DateTime          @default(now())
+
+  @@unique([seekerId, jobId])
+}
+
+model SavedJob {
+  id       String   @id @default(cuid())
+  seekerId String
+  seeker   User     @relation(fields: [seekerId], references: [id], onDelete: Cascade)
+  jobId    String
+  job      Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([seekerId, jobId])
+}
+
+model JobReport {
+  id         String       @id @default(cuid())
+  reporterId String
+  reporter   User         @relation(fields: [reporterId], references: [id])
+  jobId      String
+  job        Job          @relation(fields: [jobId], references: [id])
+  reason     String
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+}
+
+model JobAlert {
+  id        String   @id @default(cuid())
+  seekerId  String
+  seeker    User     @relation(fields: [seekerId], references: [id], onDelete: Cascade)
+  query     String   @default("")
+  locality  String?
+  createdAt DateTime @default(now())
+}
+
+model OtpChallenge {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+}
+
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(0)
+  windowEnd DateTime
+}

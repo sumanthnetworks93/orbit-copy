@@ -32,3 +32,30 @@ export async function incrementProfileStat(stat: ProfileStatKey): Promise<Profil
   await AsyncStorage.setItem(key, String(next));
   return getProfileStats();
 }
+
+const VOTED_KEY = 'orbit_voted_startup_ids';
+
+async function readVotedIds(): Promise<number[]> {
+  const raw = await AsyncStorage.getItem(VOTED_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as number[];
+    return Array.isArray(parsed) ? parsed.filter((id) => Number.isFinite(id)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function isStartupVoted(id: number): Promise<boolean> {
+  return (await readVotedIds()).includes(id);
+}
+
+export async function toggleStartupVote(id: number): Promise<{ voted: boolean }> {
+  const ids = await readVotedIds();
+  const voted = ids.includes(id);
+  const nextIds = voted ? ids.filter((item) => item !== id) : [...ids, id];
+  await AsyncStorage.setItem(VOTED_KEY, JSON.stringify(nextIds));
+  const count = await readCount(KEYS.upvoted);
+  await AsyncStorage.setItem(KEYS.upvoted, String(Math.max(0, count + (voted ? -1 : 1))));
+  return { voted: !voted };
+}

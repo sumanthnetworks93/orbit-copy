@@ -1,4 +1,5 @@
 import type { Job } from '../types';
+import { isJobVerifiedByOrbitSupport } from '../services/orbitSupport';
 import { asHyd, isJobVisibleToSeekers } from './filter';
 
 export type MatchProfile = {
@@ -58,9 +59,9 @@ export function scoreJobMatch(job: Job, profile: MatchProfile): { score: number;
     reasons.push(`Near ${job.area ?? profile.area}`);
   }
 
-  if (job.verifiedEmployer) {
+  if (isJobVerifiedByOrbitSupport(job)) {
     score += 8;
-    reasons.push('Verified employer');
+    reasons.push('Verified by Orbit Support');
   }
   if (job.walkIn) {
     score += 7;

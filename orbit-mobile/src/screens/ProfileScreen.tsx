@@ -870,13 +870,15 @@ const styles = StyleSheet.create({
 
   title: {
 
-    fontFamily: fonts.semiBold,
+    fontFamily: fonts.display,
 
-    fontSize: 34,
+    fontSize: 42,
 
-    letterSpacing: -0.8,
+    letterSpacing: -1.1,
 
     color: colors.ink,
+
+    lineHeight: 46,
 
   },
 

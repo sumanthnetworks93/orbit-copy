@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countPostedOnDay, dayKeyInIst, jobsFeedRows, mergeDayCounts, postedDayLabel } from './postedAt';
+import { countPostedOnDay, dayKeyInIst, jobsFeedRows, mergeDayCounts, postedDayLabel, startupFeedRows } from './postedAt';
 
 const noonIst = Date.parse('2026-09-13T06:30:00.000Z');
 
@@ -57,5 +57,41 @@ describe('posted day counts', () => {
       noonIst,
     );
     expect(rows.filter((row) => row.kind === 'day').map((row) => row.label)).toEqual(['Today', 'Yesterday']);
+  });
+
+  it('keeps Hyderabad jobs above an Outside location section', () => {
+    const rows = jobsFeedRows(
+      [
+        { id: 1, postedAt: '2026-09-13T08:00:00.000Z', location: 'New York', outsideLocation: true },
+        { id: 2, postedAt: '2026-09-12T09:00:00.000Z', location: 'Gachibowli, Hyderabad', area: 'Gachibowli', outsideLocation: false },
+        { id: 3, postedAt: '2026-09-13T09:00:00.000Z', location: 'Madhapur, Hyderabad', area: 'Madhapur', outsideLocation: false },
+      ],
+      { '2026-09-13': 2, '2026-09-12': 1 },
+      noonIst,
+      'Hyderabad',
+    );
+    const jobIds = rows.filter((row) => row.kind === 'job').map((row) => row.job.id);
+    expect(jobIds).toEqual([3, 2, 1]);
+    expect(rows.filter((row) => row.kind === 'section').map((row) => row.label)).toEqual([
+      'In Hyderabad',
+      'Outside location',
+    ]);
+  });
+
+  it('groups Hyderabad startups above an Outside location section', () => {
+    const rows = startupFeedRows(
+      [
+        { id: 1, location: 'New York', outsideLocation: true },
+        { id: 2, location: 'Warangal, Telangana', area: 'Warangal', outsideLocation: false },
+        { id: 3, location: 'Gachibowli, Hyderabad', area: 'Gachibowli', outsideLocation: false },
+      ],
+      'Hyderabad',
+    );
+    expect(rows.filter((row) => row.kind === 'startup').map((row) => row.startup.id)).toEqual([3, 2, 1]);
+    expect(rows.filter((row) => row.kind === 'section').map((row) => row.label)).toEqual([
+      'In Hyderabad',
+      'More local startups',
+      'Outside location',
+    ]);
   });
 });

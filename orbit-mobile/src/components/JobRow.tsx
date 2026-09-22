@@ -4,7 +4,8 @@ import { ApplySheet } from './ApplySheet';
 import { useLanguage } from '../hyd/LanguageContext';
 import { isJobFrozenForDisplay } from '../hyd/filter';
 import type { Job } from '../types';
-import { colors } from '../theme/colors';
+import { isJobVerifiedByOrbitSupport } from '../services/orbitSupport';
+import { colors, elevation } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
 type Props = {
@@ -17,6 +18,7 @@ export const JobRow = memo(function JobRow({ job, onApply, onOpen }: Props) {
   const { copy } = useLanguage();
   const [open, setOpen] = useState(false);
   const frozen = isJobFrozenForDisplay(job);
+  const orbitVerified = isJobVerifiedByOrbitSupport(job);
 
   return (
     <Pressable
@@ -39,13 +41,22 @@ export const JobRow = memo(function JobRow({ job, onApply, onOpen }: Props) {
           {job.commuteMin ? ` · ${job.commuteMin} min commute` : ''}
         </Text>
         <View style={styles.badges}>
-          {job.verifiedEmployer ? <Badge label={copy.verified} /> : null}
+          {orbitVerified ? (
+            <View testID={`job-orbit-verified-${job.id}`}>
+              <Badge label={copy.verified} />
+            </View>
+          ) : null}
           {frozen ? <Badge label={copy.frozen} /> : null}
           {job.womenSafe ? <Badge label={copy.womenSafe} /> : null}
           {job.cabProvided ? <Badge label={copy.cab} /> : null}
           {job.nearMetro ? <Badge label={copy.metro} /> : null}
           {job.lateShift ? <Badge label={copy.lateShift} /> : null}
           {job.walkIn ? <Badge label={copy.walkInToday} /> : null}
+          {job.outsideLocation ? (
+            <View testID={`job-outside-${job.id}`}>
+              <Badge label={copy.outsideLocation} />
+            </View>
+          ) : null}
         </View>
         {job.lastReplyAt ? (
           <Text style={styles.reply}>
@@ -86,11 +97,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 20,
+    padding: 16,
     gap: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    marginBottom: 10,
+    borderRadius: 22,
+    backgroundColor: colors.white,
     overflow: 'hidden',
+    ...elevation.card,
   },
   avatar: {
     width: 44,
@@ -126,11 +139,11 @@ const styles = StyleSheet.create({
   },
   salary: { fontFamily: fonts.semiBold, fontSize: 16, color: colors.ink },
   apply: {
-    backgroundColor: colors.black,
+    backgroundColor: colors.lilac,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  applyText: { color: colors.white, fontFamily: fonts.medium, fontSize: 13 },
+  applyText: { color: colors.ink, fontFamily: fonts.medium, fontSize: 13 },
   pressed: { opacity: 0.88 },
 });

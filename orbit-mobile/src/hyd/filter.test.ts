@@ -1,15 +1,19 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { HYD_AREAS, TELANGANA_DISTRICTS } from './areas';
-import { asHyd, matchesHydFilters, mergeHydJobs, visibleWalkInJobs } from './filter';
+import { asHyd, isFreelanceJob, jobsForStartup, matchesHydFilters, mergeHydJobs, mergeHydStartups, visibleWalkInJobs } from './filter';
 import { previewHydJobs } from './previewJobs';
 import { HYD_JOBS, isGhostFrozen, walkInJobs } from './seed';
 import { DEFAULT_PLATFORM_CONTROLS, setPlatformControlsSync } from '../services/adminControl';
 import { setJobOverridesSync } from '../services/adminJobs';
-import { defaultJobFilters, type Job } from '../types';
+import { setEmployerListingsSync } from '../services/employerJobs';
+import { ADMIN_PROFILE_SEED, setAdminProfilesSync } from '../services/adminModeration';
+import { defaultJobFilters, defaultStartupFilters, type Job } from '../types';
 
 beforeEach(() => {
   setJobOverridesSync({});
   setPlatformControlsSync(DEFAULT_PLATFORM_CONTROLS);
+  setEmployerListingsSync([]);
+  setAdminProfilesSync(ADMIN_PROFILE_SEED);
 });
 
 describe('asHyd', () => {
@@ -32,6 +36,12 @@ describe('matchesHydFilters', () => {
     expect(matchesHydFilters(nurse, { ...defaultJobFilters, area: 'Hyderabad', location: 'Hyderabad, Telangana' })).toBe(true);
     expect(matchesHydFilters(nurse, { ...defaultJobFilters, area: 'Rangareddy' })).toBe(true);
     expect(matchesHydFilters(nurse, { ...defaultJobFilters, area: 'Warangal' })).toBe(false);
+  });
+
+  it('filters verified-only to Orbit Support listings', () => {
+    expect(matchesHydFilters(nurse, { ...defaultJobFilters, verifiedOnly: true })).toBe(false);
+    setJobOverridesSync({ 9001: { orbitVerified: true } });
+    expect(matchesHydFilters(nurse, { ...defaultJobFilters, verifiedOnly: true })).toBe(true);
   });
 
   it('filters by search and women-safe', () => {
@@ -64,6 +74,14 @@ describe('matchesHydFilters', () => {
     setJobOverridesSync({ 9005: { frozen: false } });
     expect(matchesHydFilters(frozen, defaultJobFilters)).toBe(true);
   });
+
+  it('keeps freelance gigs off the jobs feed', () => {
+    const gig = HYD_JOBS.find((job) => job.id === 9101)!;
+    expect(isFreelanceJob(gig)).toBe(true);
+    expect(matchesHydFilters(gig, defaultJobFilters)).toBe(false);
+    expect(matchesHydFilters(gig, { ...defaultJobFilters, freelanceOnly: true })).toBe(true);
+    expect(matchesHydFilters(nurse, { ...defaultJobFilters, freelanceOnly: true })).toBe(false);
+  });
 });
 
 describe('mergeHydJobs', () => {
@@ -72,7 +90,7 @@ describe('mergeHydJobs', () => {
     const merged = mergeHydJobs(remote, defaultJobFilters, 1);
     expect(merged[0]?.id).toBeGreaterThanOrEqual(9000);
     expect(merged.some((job) => job.id === 1)).toBe(true);
-    expect(mergeHydJobs(remote, defaultJobFilters, 2)).toEqual(remote);
+    expect(mergeHydJobs(remote, defaultJobFilters, 2).map((job) => job.id)).toEqual([1]);
   });
 
   it('omits Super Admin frozen jobs from the seeker merge', () => {
@@ -80,6 +98,75 @@ describe('mergeHydJobs', () => {
     const merged = mergeHydJobs([], defaultJobFilters, 1);
     expect(merged.some((job) => job.id === 9002)).toBe(false);
     expect(merged.some((job) => job.id === 9001)).toBe(true);
+  });
+
+  it('prepends live employer posts on page 1', () => {
+    setEmployerListingsSync([
+      {
+        id: 'el-test',
+        boardJobId: 7101,
+        title: 'Staff Nurse',
+        company: 'Helios Health',
+        location: 'Gachibowli, Hyderabad',
+        jobType: 'Full-time',
+        salary: '₹28k',
+        tags: 'Nursing',
+        applicants: 0,
+        status: 'open',
+        postedAt: 'Just now',
+      },
+    ]);
+    const merged = mergeHydJobs([], defaultJobFilters, 1);
+    expect(merged.some((job) => job.id === 7101)).toBe(true);
+    expect(merged.find((job) => job.id === 7101)?.verifiedEmployer).toBe(true);
+    expect(mergeHydJobs([], defaultJobFilters, 2).some((job) => job.id === 7101)).toBe(false);
+  });
+
+  it('stamps Verified by Orbit Support only after Super Admin verifies a listing', () => {
+    const merged = mergeHydJobs([], defaultJobFilters, 1);
+    expect(merged.find((job) => job.id === 9001)?.verifiedEmployer).toBe(false);
+    setJobOverridesSync({ 9001: { orbitVerified: true } });
+    expect(mergeHydJobs([], defaultJobFilters, 1).find((job) => job.id === 9001)?.verifiedEmployer).toBe(true);
+  });
+
+  it('splits freelance gigs onto their own feed', () => {
+    const jobs = mergeHydJobs([], defaultJobFilters, 1);
+    const gigs = mergeHydJobs([], { ...defaultJobFilters, freelanceOnly: true }, 1);
+    expect(jobs.some((job) => job.id === 9101)).toBe(false);
+    expect(jobs.some((job) => job.id === 9001)).toBe(true);
+    expect(gigs.some((job) => job.id === 9101)).toBe(true);
+    expect(gigs.some((job) => job.id === 9001)).toBe(false);
+  });
+});
+
+describe('jobsForStartup', () => {
+  it('lists jobs and gigs for that company only', () => {
+    const roles = jobsForStartup('Orbit Fleet');
+    expect(roles.some((job) => job.id === 9007)).toBe(true);
+    expect(roles.some((job) => job.id === 9102)).toBe(true);
+    expect(roles.every((job) => job.company === 'Orbit Fleet')).toBe(true);
+    expect(jobsForStartup('Missing Co')).toEqual([]);
+  });
+});
+
+describe('mergeHydStartups', () => {
+  it('prepends Hyderabad startups on page 1 and skips later pages', () => {
+    const remote = [{
+      id: 1,
+      name: 'Marble',
+      description: '',
+      category: 'Dev Tools',
+      openRoles: 1,
+      upvotes: 1,
+      initial: 'M',
+      color: '#000',
+      location: 'San Francisco',
+    }];
+    const merged = mergeHydStartups(remote, defaultStartupFilters, 1);
+    expect(merged[0]?.id).toBeGreaterThanOrEqual(8000);
+    expect(merged.some((startup) => startup.id === 1)).toBe(true);
+    expect(merged.find((startup) => startup.id === 1)?.outsideLocation).toBe(true);
+    expect(mergeHydStartups(remote, defaultStartupFilters, 2).every((startup) => startup.id < 8000)).toBe(true);
   });
 });
 

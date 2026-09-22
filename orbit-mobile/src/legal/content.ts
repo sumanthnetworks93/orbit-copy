@@ -107,7 +107,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
       },
       {
         heading: 'Verification',
-        body: 'Orbit verifies recruiters before they can post freely. Unverified employers stay in review. Super Admin may require documents, freeze, hide, or reject a listing. Fake placement agencies are not allowed.',
+        body: 'Orbit verifies recruiters before they can post freely. Unverified employers stay in review. When Super Admin verifies an employer or listing, seekers see a Verified by Orbit Support tag. Super Admin may require documents, freeze, hide, or reject a listing. Fake placement agencies are not allowed.',
       },
       {
         heading: 'No fees from candidates',
@@ -146,7 +146,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
       },
       {
         heading: 'Sharing',
-        body: 'Employers do not get unrestricted access to your phone or resume. They see the 6-field apply and a masked number. Super Admin can verify, suspend, or freeze listings. We do not sell seeker data.',
+        body: 'Employers do not get unrestricted access to your phone or resume. They see the 6-field apply and a masked number. Super Admin can verify, suspend, or freeze listings. Verified listings show Verified by Orbit Support. We do not sell seeker data.',
       },
       {
         heading: 'Your controls',

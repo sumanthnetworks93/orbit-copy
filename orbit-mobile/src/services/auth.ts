@@ -14,6 +14,7 @@ import {
   DEMO_SEEKER,
   findDemoAccount,
 } from './demoAccounts';
+import { reportLoginAlert } from './api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -140,6 +141,7 @@ export async function completeSsoFromUrl(callbackUrl?: string): Promise<AuthUser
   await account.createSession({ userId, secret });
   const user = mapAppwriteUser(await account.get());
   notifyAuthChange(user);
+  notifyAdminLogin(user, 'sso');
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const clean = new URL(window.location.href);
@@ -168,6 +170,7 @@ export async function signInWithPassword(email: string, password: string): Promi
     await AsyncStorage.setItem(DEMO_SEEKER_SESSION_KEY, '1');
   }
   notifyAuthChange(user);
+  notifyAdminLogin(user, 'password');
   return user;
 }
 
@@ -175,6 +178,7 @@ export async function signInAsUser(): Promise<AuthUser> {
   await clearMockSessions();
   await AsyncStorage.setItem(DEMO_SEEKER_SESSION_KEY, '1');
   notifyAuthChange(DEMO_SEEKER);
+  notifyAdminLogin(DEMO_SEEKER, 'demo-user');
   return DEMO_SEEKER;
 }
 
@@ -182,6 +186,7 @@ export async function signInAsGuest(): Promise<AuthUser> {
   await clearMockSessions();
   await AsyncStorage.setItem(E2E_SESSION_KEY, '1');
   notifyAuthChange(E2E_USER);
+  notifyAdminLogin(E2E_USER, 'guest');
   return E2E_USER;
 }
 
@@ -189,6 +194,7 @@ export async function signInAsEmployer(): Promise<AuthUser> {
   await clearMockSessions();
   await AsyncStorage.setItem(EMPLOYER_SESSION_KEY, '1');
   notifyAuthChange(MOCK_EMPLOYER);
+  notifyAdminLogin(MOCK_EMPLOYER, 'demo-employer');
   return MOCK_EMPLOYER;
 }
 
@@ -196,7 +202,13 @@ export async function signInAsAdmin(): Promise<AuthUser> {
   await clearMockSessions();
   await AsyncStorage.setItem(ADMIN_SESSION_KEY, '1');
   notifyAuthChange(MOCK_ADMIN);
+  notifyAdminLogin(MOCK_ADMIN, 'demo-admin');
   return MOCK_ADMIN;
+}
+
+function notifyAdminLogin(user: AuthUser, method: string) {
+  if (isE2EMode()) return;
+  void reportLoginAlert(user, method).catch(() => undefined);
 }
 
 async function clearMockSessions() {

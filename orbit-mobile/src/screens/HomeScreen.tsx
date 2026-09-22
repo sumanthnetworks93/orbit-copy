@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,20 +17,29 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AiMatchesSheet } from '../components/AiMatchesSheet';
 import { ApplySheet } from '../components/ApplySheet';
 import { JobRow } from '../components/JobRow';
+import { mergeHydStartups } from '../hyd/filter';
 import { TELANGANA_DISTRICTS } from '../hyd/areas';
-import { dayKeyInIst, jobsFeedRows } from '../hyd/postedAt';
+import { areaFromGeo, preferredLocationLabel } from '../hyd/locationReconcile';
+import { dayKeyInIst, jobsFeedRows, startupFeedRows } from '../hyd/postedAt';
+import { MobileQr } from '../components/MobileQr';
 import { PostButton } from '../components/PostButton';
 import { SocialFooter } from '../components/SocialFooter';
 import { PostModal } from '../components/PostModal';
-import { SegmentedControl } from '../components/SegmentedControl';
+import { SegmentedControl, type FeedMode } from '../components/SegmentedControl';
 import { StartupRow } from '../components/StartupRow';
 import type { HomeStackParamList } from '../navigation/types';
+import { OnboardingSheet } from '../components/OnboardingSheet';
+import { useAuth } from '../context/AuthContext';
 import { fetchGeoLocation, fetchJobs, fetchStartups } from '../services/api';
+import { isE2EMode, isGuestSession } from '../services/auth';
+import { completeOnboarding, hydrateOnboarding } from '../services/onboarding';
+import { setDisplayName } from '../services/profileStorage';
 import { previewHydJobs } from '../hyd/previewJobs';
 import { getPlatformControlsSync } from '../services/adminControl';
 import {
   getMatchAlerts,
   markMatchesRead,
+  patchMatchPrefs,
   subscribeToJobMatches,
   unsubscribeFromJobMatches,
   type MatchPrefs,
@@ -46,13 +56,13 @@ import {
   type Startup,
   type StartupFilters,
 } from '../types';
-import { colors } from '../theme/colors';
+import { colors, elevation } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Feed'>;
-type FeedMode = 'startups' | 'jobs';
 
 export function HomeScreen({ navigation, route }: Props) {
+  const { user } = useAuth();
   const mode: FeedMode = route.params?.mode ?? 'jobs';
   const startupFilterParams = route.params?.startupFilters;
   const jobFilterParams = route.params?.jobFilters;
@@ -80,6 +90,10 @@ export function HomeScreen({ navigation, route }: Props) {
       jobFilterParams?.walkInOnly,
     ],
   );
+  const listingFilters = useMemo(
+    () => ({ ...jobFilters, freelanceOnly: mode === 'freelance' }),
+    [jobFilters, mode],
+  );
 
   const [startups, setStartups] = useState<Startup[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -106,8 +120,17 @@ export function HomeScreen({ navigation, route }: Props) {
   const [matchPrefs, setMatchPrefs] = useState<MatchPrefs | null>(null);
   const [matchList, setMatchList] = useState<RankedMatch[]>([]);
   const [unreadMatches, setUnreadMatches] = useState(0);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [phoneQrOpen, setPhoneQrOpen] = useState(false);
 
   const loadStartups = useCallback(async (pageNum: number, append: boolean, filters: StartupFilters) => {
+    if (!append && pageNum === 1) {
+      const preview = mergeHydStartups([], filters, 1);
+      setStartups(preview);
+      setStartupPage(1);
+      setStartupTotal(preview.length);
+      setStartupHasMore(false);
+    }
     const data = await fetchStartups(pageNum, filters);
     setStartups((current) => (append ? [...current, ...data.items] : data.items));
     setStartupPage(data.page);
@@ -159,7 +182,7 @@ export function HomeScreen({ navigation, route }: Props) {
       if (activeMode === 'startups') {
         await loadStartups(pageNum, append, startupFilters);
       } else {
-        await loadJobs(pageNum, append, jobFilters);
+        await loadJobs(pageNum, append, listingFilters);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feed.');
@@ -175,11 +198,24 @@ export function HomeScreen({ navigation, route }: Props) {
         }
       }
     }
-  }, [jobFilters, loadJobs, loadStartups, startupFilters]);
+  }, [listingFilters, loadJobs, loadStartups, startupFilters]);
 
   useEffect(() => {
     fetchGeoLocation()
-      .then(setGeo)
+      .then((next) => {
+        setGeo(next);
+        if (!next?.city) return;
+        if (jobFilterParams?.area || jobFilterParams?.location) return;
+        const area = areaFromGeo(next.city, next.state, next.district);
+        if (!area) return;
+        navigation.setParams({
+          jobFilters: {
+            ...jobFilters,
+            area,
+            location: `${next.city}${next.state ? `, ${next.state}` : ''}`,
+          },
+        });
+      })
       .catch(() => undefined);
   }, []);
 
@@ -190,9 +226,19 @@ export function HomeScreen({ navigation, route }: Props) {
           setMatchPrefs(prefs);
           setMatchList(matches);
           setUnreadMatches(unread);
+          if (prefs.area && !jobFilterParams?.area) {
+            navigation.setParams({
+              jobFilters: { ...jobFilters, area: prefs.area, location: `${prefs.area}, Telangana` },
+            });
+          }
         })
         .catch(() => undefined);
-    }, []),
+      if (user?.role === 'seeker' && !isGuestSession(user) && !isE2EMode()) {
+        void hydrateOnboarding().then((done) => {
+          if (!done) setOnboardingOpen(true);
+        });
+      }
+    }, [jobFilterParams?.area, jobFilters, navigation, user]),
   );
 
   useEffect(() => {
@@ -208,6 +254,11 @@ export function HomeScreen({ navigation, route }: Props) {
     };
   }, [loadFeed, mode, startupFilters, jobFilters]);
 
+  function finishOnboarding() {
+    setOnboardingOpen(false);
+    void completeOnboarding();
+  }
+
   function setMode(nextMode: FeedMode) {
     navigation.setParams({ mode: nextMode, startupFilters, jobFilters });
   }
@@ -219,21 +270,20 @@ export function HomeScreen({ navigation, route }: Props) {
   }
 
   function renderListFooter(hasMore: boolean) {
-    if (loadingMore) {
-      return <ActivityIndicator color={colors.ink} style={styles.footerLoader} />;
-    }
-
-    if (!hasMore) {
-      return null;
-    }
-
     return (
-      <Pressable
-        style={({ pressed }) => [styles.loadMore, pressed && styles.pressed]}
-        onPress={handleLoadMore}
-      >
-        <Text style={styles.loadMoreText}>Load more</Text>
-      </Pressable>
+      <View>
+        {loadingMore ? (
+          <ActivityIndicator color={colors.ink} style={styles.footerLoader} />
+        ) : hasMore ? (
+          <Pressable
+            style={({ pressed }) => [styles.loadMore, pressed && styles.pressed]}
+            onPress={handleLoadMore}
+          >
+            <Text style={styles.loadMoreText}>Load more</Text>
+          </Pressable>
+        ) : null}
+        <SocialFooter />
+      </View>
     );
   }
 
@@ -258,16 +308,27 @@ export function HomeScreen({ navigation, route }: Props) {
   const activeFilterCount =
     mode === 'startups' ? countActiveStartupFilters(startupFilters) : countActiveJobFilters(jobFilters);
 
-  const eyebrow = mode === 'startups' ? 'TRENDING TODAY' : 'TODAY';
-  const title = mode === 'startups' ? 'Startups' : 'Jobs';
+  const eyebrow = mode === 'startups' ? 'LAUNCHING TODAY' : mode === 'freelance' ? 'GIGS TODAY' : 'TODAY';
+  const title = mode === 'startups' ? 'Top products' : mode === 'freelance' ? 'Freelance' : 'Jobs';
   const meta =
     mode === 'startups'
-      ? `${startupTotal} LISTED`
-      : `${jobMeta.postedTodayCount} POSTED TODAY · ${jobMeta.roleCount} ROLES`;
+      ? `${startupTotal} PRODUCTS`
+      : mode === 'freelance'
+        ? `${jobMeta.roleCount} GIGS`
+        : `${jobMeta.postedTodayCount} POSTED TODAY · ${jobMeta.roleCount} ROLES`;
+  const preferredLocation = preferredLocationLabel({
+    area: jobFilters.area,
+    location: jobFilters.location,
+    geoCity: geo?.city,
+  });
   const jobRows = useMemo(() => {
     const counts = Object.fromEntries(jobMeta.postedByDay.map((row) => [row.date, row.count]));
-    return jobsFeedRows(jobs, counts);
-  }, [jobs, jobMeta.postedByDay]);
+    return jobsFeedRows(jobs, counts, Date.now(), preferredLocation);
+  }, [jobs, jobMeta.postedByDay, preferredLocation]);
+  const startupRows = useMemo(
+    () => startupFeedRows(startups, preferredLocation),
+    [startups, preferredLocation],
+  );
   const todayKey = dayKeyInIst(Date.now());
   const locationLabel =
     jobFilters.area ||
@@ -281,7 +342,7 @@ export function HomeScreen({ navigation, route }: Props) {
 
   function setJobLocation(area: string | null, location: string) {
     navigation.setParams({
-      mode: 'jobs',
+      mode,
       jobFilters: { ...jobFilters, area, location },
     });
     setLocationOpen(false);
@@ -292,14 +353,53 @@ export function HomeScreen({ navigation, route }: Props) {
   const openJob = useCallback((job: Job) => {
     navigation.navigate('JobDetail', { job });
   }, [navigation]);
-  const renderStartupItem = useCallback(({ item }: { item: Startup }) => (
-    <StartupRow startup={item} />
-  ), []);
+  const openStartup = useCallback((startup: Startup) => {
+    navigation.navigate('StartupDetail', { startup });
+  }, [navigation]);
+  const renderStartupItem = useCallback(({ item }: { item: (typeof startupRows)[number] }) => {
+    if (item.kind === 'section') {
+      return (
+        <View
+          testID={`startups-section-${item.key}`}
+          style={[
+            styles.sectionHead,
+            item.key === 'outside' && styles.sectionHeadOutside,
+            item.key === 'other' && styles.sectionHeadOther,
+          ]}
+        >
+          <Text style={styles.sectionKicker}>
+            {item.count} {item.count === 1 ? 'startup' : 'startups'}
+          </Text>
+          <Text style={styles.sectionLabel}>{item.label}</Text>
+          {item.hint ? <Text style={styles.sectionHint}>{item.hint}</Text> : null}
+        </View>
+      );
+    }
+    return <StartupRow startup={item.startup} onOpen={openStartup} />;
+  }, [openStartup]);
   const renderJobItem = useCallback(({ item }: { item: (typeof jobRows)[number] }) => {
+    if (item.kind === 'section') {
+      return (
+        <View
+          testID={`jobs-section-${item.key}`}
+          style={[
+            styles.sectionHead,
+            item.key === 'outside' && styles.sectionHeadOutside,
+            item.key === 'other' && styles.sectionHeadOther,
+          ]}
+        >
+          <Text style={styles.sectionKicker}>
+            {item.count} {item.count === 1 ? 'role' : 'roles'}
+          </Text>
+          <Text style={styles.sectionLabel}>{item.label}</Text>
+          {item.hint ? <Text style={styles.sectionHint}>{item.hint}</Text> : null}
+        </View>
+      );
+    }
     if (item.kind === 'day') {
       return (
         <View
-          testID={item.key === todayKey ? 'jobs-day-today' : `jobs-day-${item.key}`}
+          testID={item.group === 'nearby' && item.key === todayKey ? 'jobs-day-today' : `jobs-day-${item.group}-${item.key}`}
           style={styles.dayHead}
         >
           <Text style={styles.dayLabel}>{item.label}</Text>
@@ -311,7 +411,10 @@ export function HomeScreen({ navigation, route }: Props) {
   }, [openApply, openJob, todayKey]);
 
   return (
-    <View style={styles.root} testID={mode === 'jobs' ? 'jobs-screen' : 'startups-screen'}>
+    <View
+      style={styles.root}
+      testID={mode === 'jobs' ? 'jobs-screen' : mode === 'freelance' ? 'freelance-screen' : 'startups-screen'}
+    >
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
@@ -320,6 +423,19 @@ export function HomeScreen({ navigation, route }: Props) {
               <Text style={styles.title}>{title}</Text>
             </View>
             <View style={styles.headerActions}>
+            {Platform.OS === 'web' ? (
+              <Pressable
+                testID="header-phone-qr"
+                onPress={() => {
+                  setLocationOpen(false);
+                  setAlertsOpen(false);
+                  setPhoneQrOpen(true);
+                }}
+                style={({ pressed }) => [styles.alertsBtn, pressed && styles.pressed]}
+              >
+                <MaterialIcons name="qr-code-2" size={18} color={colors.ink} />
+              </Pressable>
+            ) : null}
             <Pressable
               testID="header-alerts"
               onPress={() => {
@@ -363,7 +479,10 @@ export function HomeScreen({ navigation, route }: Props) {
                   if (mode === 'startups') {
                     navigation.navigate('StartupsFilter', { filters: startupFilters });
                   } else {
-                    navigation.navigate('JobsFilter', { filters: jobFilters });
+                    navigation.navigate('JobsFilter', {
+                      filters: jobFilters,
+                      mode: mode === 'freelance' ? 'freelance' : 'jobs',
+                    });
                   }
                 }}
                 style={styles.filterLink}
@@ -389,8 +508,10 @@ export function HomeScreen({ navigation, route }: Props) {
         ) : mode === 'startups' ? (
           <FlatList
             style={styles.listView}
-            data={startups}
-            keyExtractor={(item) => `startup-${item.id}`}
+            data={startupRows}
+            keyExtractor={(item) =>
+              item.kind === 'section' ? `startup-section-${item.key}` : `startup-${item.startup.id}`
+            }
             contentContainerStyle={styles.list}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
             keyboardShouldPersistTaps="handled"
@@ -408,7 +529,11 @@ export function HomeScreen({ navigation, route }: Props) {
           <FlatList
             style={styles.listView}
             data={jobRows}
-            keyExtractor={(item) => (item.kind === 'day' ? `day-${item.key}` : `job-${item.job.id}`)}
+            keyExtractor={(item) => {
+              if (item.kind === 'section') return `section-${item.key}`;
+              if (item.kind === 'day') return `day-${item.group}-${item.key}`;
+              return `job-${item.job.id}`;
+            }}
             contentContainerStyle={styles.list}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
             keyboardShouldPersistTaps="handled"
@@ -417,14 +542,14 @@ export function HomeScreen({ navigation, route }: Props) {
             windowSize={7}
             removeClippedSubviews={false}
             ListEmptyComponent={
-              <Text style={styles.empty}>{error ?? 'No jobs match these filters.'}</Text>
+              <Text style={styles.empty}>
+                {error ?? (mode === 'freelance' ? 'No gigs match these filters.' : 'No jobs match these filters.')}
+              </Text>
             }
             ListFooterComponent={renderListFooter(jobHasMore)}
             renderItem={renderJobItem}
           />
         )}
-
-        <SocialFooter />
 
         <ApplySheet job={applyJob} visible={applyJob !== null} onClose={closeApply} />
 
@@ -453,6 +578,19 @@ export function HomeScreen({ navigation, route }: Props) {
               navigation.navigate('JobDetail', { job });
             }}
           />
+        ) : null}
+
+        {phoneQrOpen ? (
+          <>
+            <Pressable
+              testID="phone-qr-dismiss"
+              style={styles.locationScrim}
+              onPress={() => setPhoneQrOpen(false)}
+            />
+            <View style={styles.phoneQrSheet} testID="phone-qr-sheet">
+              <MobileQr />
+            </View>
+          </>
         ) : null}
 
         {locationOpen ? (
@@ -502,10 +640,30 @@ export function HomeScreen({ navigation, route }: Props) {
 
         <PostModal
           visible={postOpen}
-          variant={mode === 'startups' ? 'startup' : 'job'}
+          variant={mode === 'startups' ? 'startup' : mode === 'freelance' ? 'freelance' : 'job'}
           onClose={() => setPostOpen(false)}
           onPosted={reloadFeed}
         />
+        {onboardingOpen ? (
+          <OnboardingSheet
+            defaultName={user?.name ?? ''}
+            onSkip={finishOnboarding}
+            onContinue={({ name, area, role }) => {
+              void setDisplayName(name);
+              void patchMatchPrefs({ area, role });
+              navigation.setParams({
+                mode: 'jobs',
+                jobFilters: { ...jobFilters, area, location: `${area}, Telangana` },
+              });
+              finishOnboarding();
+              void getMatchAlerts().then(({ prefs, matches, unread }) => {
+                setMatchPrefs(prefs);
+                setMatchList(matches);
+                setUnreadMatches(unread);
+              });
+            }}
+          />
+        ) : null}
       </SafeAreaView>
     </View>
   );
@@ -521,8 +679,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingTop: 14,
+    paddingBottom: 8,
     backgroundColor: colors.canvas,
     zIndex: 1,
   },
@@ -543,14 +701,13 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   alertsBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+    ...elevation.card,
   },
   alertsDot: {
     position: 'absolute',
@@ -574,18 +731,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     maxWidth: 158,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.white,
+    ...elevation.card,
   },
   locationBtnText: {
     flexShrink: 1,
     fontFamily: fonts.medium,
     fontSize: 13,
     color: colors.ink,
+  },
+  phoneQrSheet: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: 88,
+    zIndex: 21,
   },
   locationScrim: {
     ...StyleSheet.absoluteFillObject,
@@ -594,23 +757,17 @@ const styles = StyleSheet.create({
   },
   locationMenu: {
     position: 'absolute',
-    top: 72,
+    top: 78,
     right: 16,
-    width: 260,
+    width: 268,
     maxHeight: 420,
     zIndex: 21,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.white,
+    borderRadius: 24,
     paddingHorizontal: 10,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 10,
-    shadowColor: '#16140F',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    ...elevation.float,
   },
   locationList: {
     maxHeight: 340,
@@ -637,7 +794,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   locationChoiceOn: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.lilac,
   },
   locationChoiceText: {
     fontFamily: fonts.medium,
@@ -645,17 +802,19 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   eyebrow: {
-    fontFamily: fonts.semiBold,
+    fontFamily: fonts.medium,
     fontSize: 11,
-    letterSpacing: 1.8,
+    letterSpacing: 2.4,
     color: colors.label,
-    marginBottom: 8,
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   title: {
-    fontFamily: fonts.semiBold,
-    fontSize: 34,
-    letterSpacing: -0.8,
+    fontFamily: fonts.display,
+    fontSize: 42,
+    letterSpacing: -1.1,
     color: colors.ink,
+    lineHeight: 46,
   },
   metaRow: {
     flexDirection: 'row',
@@ -679,6 +838,43 @@ const styles = StyleSheet.create({
     color: colors.label,
     flexShrink: 1,
   },
+  sectionHead: {
+    marginTop: 32,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  sectionHeadOther: {
+    marginTop: 40,
+  },
+  sectionHeadOutside: {
+    marginTop: 48,
+    marginBottom: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    borderRadius: 24,
+    backgroundColor: colors.sand,
+  },
+  sectionKicker: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: colors.label,
+  },
+  sectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 30,
+    letterSpacing: -0.7,
+    color: colors.ink,
+  },
+  sectionHint: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.muted,
+    marginTop: 2,
+  },
   dayHead: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -697,18 +893,19 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   filterLink: {
-    paddingVertical: 4,
-    paddingHorizontal: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: colors.white,
   },
   filterText: {
     fontFamily: fonts.medium,
     fontSize: 13,
     color: colors.ink,
-    textDecorationLine: 'underline',
   },
   list: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
   center: {
     flex: 1,
@@ -742,14 +939,13 @@ const styles = StyleSheet.create({
   },
   loadMore: {
     alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    marginTop: 12,
+    marginBottom: 16,
+    paddingHorizontal: 26,
+    paddingVertical: 13,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.white,
+    ...elevation.card,
   },
   loadMoreText: {
     fontFamily: fonts.medium,

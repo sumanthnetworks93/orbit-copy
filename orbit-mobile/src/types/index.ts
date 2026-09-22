@@ -16,6 +16,7 @@ export type JobFilters = {
   lateShift?: boolean;
   verifiedOnly?: boolean;
   walkInOnly?: boolean;
+  freelanceOnly?: boolean;
 };
 
 export const defaultStartupFilters: StartupFilters = {
@@ -49,6 +50,7 @@ export type GeoLocation = {
   timezone: string;
   flag: string;
   emoji: string;
+  district?: string;
 };
 
 export type PagedResponse<T> = {
@@ -79,6 +81,9 @@ export type Startup = {
   upvotes: number;
   initial: string;
   color: string;
+  location: string;
+  area?: string;
+  outsideLocation?: boolean;
 };
 
 export type Job = {
@@ -110,6 +115,8 @@ export type Job = {
   };
   employerPhone?: string;
   postedAt?: string | null;
+  outsideLocation?: boolean;
+  about?: string;
 };
 
 export type JobsResponse = {

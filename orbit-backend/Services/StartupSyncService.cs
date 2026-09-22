@@ -59,6 +59,7 @@ public class StartupSyncService(
                 current.SourceUrl = startup.SourceUrl;
                 current.OpenRoles = startup.OpenRoles;
                 current.Upvotes = Math.Max(current.Upvotes, startup.Upvotes);
+                current.Location = startup.Location;
                 continue;
             }
 

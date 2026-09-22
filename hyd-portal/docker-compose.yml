@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orbit
+      POSTGRES_PASSWORD: orbit_dev_only
+      POSTGRES_DB: hyd_portal
+    ports:
+      - '5433:5432'
+    volumes:
+      - hyd_pg:/var/lib/postgresql/data
+
+volumes:
+  hyd_pg:
