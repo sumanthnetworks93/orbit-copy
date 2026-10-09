@@ -16,6 +16,7 @@ test.describe('Hyderabad hiring layer', () => {
     await expect(page.getByTestId('social-linkedin')).toBeVisible();
     await expect(page.getByTestId('social-x')).toBeVisible();
     await expect(page.getByTestId('job-row-9001')).toContainText('Staff Nurse');
+    await expect(page.getByTestId('job-view-9001')).toBeVisible();
     await expect(page.getByTestId('job-orbit-verified-9001')).toHaveCount(0);
     await expect(page.getByTestId('job-orbit-verified-7101')).toHaveText('Verified by Orbit Support');
     await expect(page.getByTestId('jobs-day-today').first()).toBeVisible();
@@ -26,17 +27,6 @@ test.describe('Hyderabad hiring layer', () => {
     await expect(page.getByTestId('job-row-9001').getByText('WhatsApp')).toHaveCount(0);
     await expect(page.getByTestId('job-row-9005')).toHaveCount(0);
     await expect(page.getByTestId('job-row-9101')).toHaveCount(0);
-  });
-
-  test('opens startup detail from a row and returns to the feed', async ({ page }) => {
-    await page.getByTestId('segment-startups').click();
-    await expect(page.getByTestId('startup-row-8001')).toBeVisible();
-    await page.getByTestId('startup-row-8001').click();
-    await expect(page.getByTestId('startup-detail')).toBeVisible();
-    await expect(page.getByTestId('startup-detail')).toContainText('Kite Health');
-    await expect(page.getByTestId('startup-detail-about')).toContainText('Telugu voice follow-ups');
-    await page.getByTestId('startup-detail-back').click();
-    await expect(page.getByTestId('startups-screen')).toBeVisible();
   });
 
   test('opens job detail from a row and returns to the feed', async ({ page }) => {

@@ -5,12 +5,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ApplySheet } from '../components/ApplySheet';
 import { SocialFooter } from '../components/SocialFooter';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../hyd/LanguageContext';
 import { isJobFrozenForDisplay } from '../hyd/filter';
 import { jobAbout, jobApplyHint, jobFacts, jobWorkLines, jobWorkplaceNotes } from '../hyd/jobBrief';
 import { scoreJobMatch } from '../hyd/match';
 import { getMatchPrefs, subscribeToJobMatches, unsubscribeFromJobMatches, type MatchPrefs } from '../services/jobAlerts';
 import { isJobVerifiedByOrbitSupport } from '../services/orbitSupport';
+import { logJobView } from '../services/api';
 import { reportListing, reportMailto } from '../services/reports';
 import type { JobDetailParams } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -20,6 +22,7 @@ type Props = NativeStackScreenProps<{ JobDetail: JobDetailParams }, 'JobDetail'>
 
 export function JobDetailScreen({ navigation, route }: Props) {
   const { job } = route.params;
+  const { user } = useAuth();
   const { copy } = useLanguage();
   const [applyOpen, setApplyOpen] = useState(false);
   const [reported, setReported] = useState<string | null>(null);
@@ -38,7 +41,8 @@ export function JobDetailScreen({ navigation, route }: Props) {
   useFocusEffect(
     useCallback(() => {
       getMatchPrefs().then(setPrefs).catch(() => undefined);
-    }, [job.id]),
+      void logJobView({ id: job.id, title: job.title, company: job.company }, user?.uid);
+    }, [job.id, job.title, job.company, user?.uid]),
   );
 
   return (

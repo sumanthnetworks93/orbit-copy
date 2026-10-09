@@ -9,6 +9,7 @@ public class OrbitDbContext(DbContextOptions<OrbitDbContext> options) : DbContex
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<LoginEvent> LoginEvents => Set<LoginEvent>();
     public DbSet<AlertSettings> AlertSettings => Set<AlertSettings>();
+    public DbSet<JobView> JobViews => Set<JobView>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

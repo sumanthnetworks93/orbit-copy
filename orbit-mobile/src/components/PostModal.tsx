@@ -151,8 +151,10 @@ export function PostModal({ visible, variant, onClose, onPosted }: Props) {
       >
         <SafeAreaView style={styles.sheet} edges={['bottom']}>
           <View style={styles.handleRow}>
-            <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable onPress={handleClose} hitSlop={12}>
+            <Text style={styles.sheetTitle} testID="post-sheet-title">
+              {title}
+            </Text>
+            <Pressable testID="post-sheet-cancel" onPress={handleClose} hitSlop={12}>
               <Text style={styles.cancel}>Cancel</Text>
             </Pressable>
           </View>

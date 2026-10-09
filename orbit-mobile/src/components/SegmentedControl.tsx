@@ -15,15 +15,6 @@ export function SegmentedControl({ value, onChange }: Props) {
   return (
     <View style={styles.track}>
       <Pressable
-        testID="segment-startups"
-        onPress={() => onChange('startups')}
-        style={[styles.segment, compact && styles.segmentCompact, value === 'startups' && styles.segmentActive]}
-      >
-        <Text style={[styles.label, compact && styles.labelCompact, value === 'startups' && styles.labelActive]} numberOfLines={1}>
-          Startups
-        </Text>
-      </Pressable>
-      <Pressable
         testID="segment-jobs"
         onPress={() => onChange('jobs')}
         style={[styles.segment, compact && styles.segmentCompact, value === 'jobs' && styles.segmentActive]}

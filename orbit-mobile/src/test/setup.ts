@@ -20,6 +20,13 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+vi.mock('expo-constants', () => ({
+  default: {
+    expoConfig: { hostUri: '' },
+    expoGoConfig: { debuggerHost: '' },
+  },
+}));
+
 beforeEach(() => {
   store.clear();
 });

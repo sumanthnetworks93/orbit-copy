@@ -4,6 +4,7 @@ export type PreviewPayload = {
   ip?: string;
   port?: number;
   url?: string;
+  publicUrl?: string;
   addresses?: string[];
 };
 
@@ -11,10 +12,30 @@ export function isLoopbackHost(hostname: string): boolean {
   return LOOPBACK.has(hostname.trim().toLowerCase());
 }
 
+export function isTunnelHost(hostname: string): boolean {
+  return /ngrok|exp\.direct|trycloudflare|loca\.lt|cloudflare/i.test(hostname);
+}
+
 export function rewriteHost(url: string, hostname: string): string {
   const next = new URL(url);
   next.hostname = hostname;
   return next.toString().replace(/\/$/, '');
+}
+
+export function hostFromMetroUri(hostUri?: string | null): string | null {
+  const host = hostUri?.split(':')[0]?.trim() ?? '';
+  if (!host || isLoopbackHost(host)) return null;
+  return host;
+}
+
+export function nativeApiBaseUrl(configured: string, metroHostUri?: string | null): string {
+  const host = hostFromMetroUri(metroHostUri);
+  if (!host) return configured;
+  try {
+    return rewriteHost(configured, host);
+  } catch {
+    return `http://${host}:5189`;
+  }
 }
 
 export function phonePreviewFromLocation(hostname: string, port: string, protocol = 'http:'): string | null {
@@ -25,6 +46,20 @@ export function phonePreviewFromLocation(hostname: string, port: string, protoco
 
 export function qrImageSrc(url: string, size = 220): string {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(url)}`;
+}
+
+export function expoGoUrlFromPreview(url: string): string {
+  const parsed = new URL(url);
+  const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+  return `exp://${parsed.hostname}:${port}`;
+}
+
+export function shareUrlFromPreview(url: string): { url: string; kind: 'expo-go' | 'browser' } {
+  const parsed = new URL(url);
+  if (parsed.protocol === 'https:' || isTunnelHost(parsed.hostname)) {
+    return { url: normalizePreviewUrl(url), kind: 'browser' };
+  }
+  return { url: expoGoUrlFromPreview(url), kind: 'expo-go' };
 }
 
 export function normalizePreviewUrl(url: string): string {
@@ -61,6 +96,11 @@ export async function resolvePhonePreviewUrl(opts: {
   for (const candidate of [...new Set(candidates)]) {
     try {
       const body = await fetchJson(candidate);
+      const publicUrl = body.publicUrl?.trim();
+      if (publicUrl) {
+        const publicHost = new URL(publicUrl).hostname;
+        if (!isLoopbackHost(publicHost)) return normalizePreviewUrl(publicUrl);
+      }
       if (!body.url) continue;
       const host = new URL(body.url).hostname;
       if (isLoopbackHost(host)) continue;

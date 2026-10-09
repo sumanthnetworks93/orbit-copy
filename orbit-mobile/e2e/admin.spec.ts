@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Admin workspace', () => {
   test('mock admin can sign in, verify a profile, and sign out', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?e2e=1');
     await expect(page.getByTestId('auth-admin')).toBeVisible();
     await page.getByTestId('auth-admin').click();
     await expect(page.getByTestId('admin-screen')).toBeVisible();
@@ -42,7 +42,7 @@ test.describe('Admin workspace', () => {
   });
 
   test('super admin freeze hides a job from the guest feed', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?e2e=1');
     await page.getByTestId('auth-admin').click();
     await expect(page.getByTestId('admin-screen')).toBeVisible();
     await page.getByTestId('tab-admin-jobs').click();

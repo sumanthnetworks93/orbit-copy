@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { Account, Client, TablesDB } from 'react-native-appwrite';
 
 export const APPWRITE_ENDPOINT =
@@ -23,6 +24,10 @@ export const APPWRITE_CALLBACK_SCHEME = `appwrite-callback-${APPWRITE_PROJECT_ID
 const client = new Client()
   .setEndpoint(APPWRITE_ENDPOINT)
   .setProject(APPWRITE_PROJECT_ID);
+
+if (Platform.OS === 'android' || Platform.OS === 'ios') {
+  client.setPlatform('com.orbit.app');
+}
 
 export const account = new Account(client);
 export const tablesDB = new TablesDB(client);

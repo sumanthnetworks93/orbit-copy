@@ -9,6 +9,7 @@ import {
   APPWRITE_ENDPOINT,
   APPWRITE_PROJECT_ID,
 } from '../config/appwrite';
+import { isStoreRelease } from '../config/release';
 
 import {
   DEMO_SEEKER,
@@ -67,12 +68,17 @@ export function isGuestSession(user: AuthUser | null) {
   return user?.uid === E2E_USER.uid;
 }
 
+function browserLocation(): Location | undefined {
+  if (Platform.OS !== 'web') return undefined;
+  if (typeof window === 'undefined') return undefined;
+  return window.location;
+}
+
 export function isE2EMode() {
   if (process.env.EXPO_PUBLIC_E2E === '1') return true;
-  if (typeof window !== 'undefined') {
-    return new URLSearchParams(window.location.search).get('e2e') === '1';
-  }
-  return false;
+  const search = browserLocation()?.search;
+  if (!search) return false;
+  return new URLSearchParams(search).get('e2e') === '1';
 }
 
 const PROVIDERS: Record<AuthProviderId, OAuthProvider> = {
@@ -118,7 +124,7 @@ function getSsoRedirectUri() {
 }
 
 function getCallbackParams(source?: string) {
-  const raw = source ?? (typeof window !== 'undefined' ? window.location.href : '');
+  const raw = source ?? browserLocation()?.href ?? '';
   if (!raw) return { userId: null, secret: null, error: null };
 
   const url = new URL(raw);
@@ -143,8 +149,9 @@ export async function completeSsoFromUrl(callbackUrl?: string): Promise<AuthUser
   notifyAuthChange(user);
   notifyAdminLogin(user, 'sso');
 
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const clean = new URL(window.location.href);
+  const page = browserLocation();
+  if (page) {
+    const clean = new URL(page.href);
     clean.searchParams.delete('userId');
     clean.searchParams.delete('user_id');
     clean.searchParams.delete('secret');
@@ -159,7 +166,7 @@ export async function completeSsoFromUrl(callbackUrl?: string): Promise<AuthUser
 export async function signInWithPassword(email: string, password: string): Promise<AuthUser> {
   const user = findDemoAccount(email, password);
   if (!user) {
-    throw new Error('Use priya@orbit.app / OrbitDemo1!');
+    throw new Error(isStoreRelease() ? 'Check your email and password.' : 'Use priya@orbit.app / OrbitDemo1!');
   }
   await clearMockSessions();
   if (user.role === 'employer') {
@@ -284,8 +291,9 @@ export async function signInWithSso(provider: AuthProviderId): Promise<AuthUser>
     throw new Error('Appwrite did not return an SSO URL. Check that this provider is enabled.');
   }
 
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    window.location.assign(String(loginUrl));
+  const page = browserLocation();
+  if (page) {
+    page.assign(String(loginUrl));
     return new Promise<AuthUser>(() => undefined);
   }
 
