@@ -29,6 +29,22 @@ async function main() {
   await renderSvg('orbit-icon.svg', 192, join(publicDir, 'icon-192.png'));
   await renderSvg('orbit-icon.svg', 512, join(publicDir, 'icon-512.png'));
 
+  const storeDir = join(rootDir, 'store');
+  await mkdir(storeDir, { recursive: true });
+  const mark = await readFile(join(sourceDir, 'orbit-mark.svg'));
+  const icon = await sharp(mark).resize(280, 280).png().toBuffer();
+  await sharp({
+    create: {
+      width: 1024,
+      height: 500,
+      channels: 3,
+      background: '#F4F2EE',
+    },
+  })
+    .composite([{ input: icon, gravity: 'center' }])
+    .png({ compressionLevel: 9 })
+    .toFile(join(storeDir, 'feature-graphic.png'));
+
   console.log('Generated Orbit brand assets.');
 }
 

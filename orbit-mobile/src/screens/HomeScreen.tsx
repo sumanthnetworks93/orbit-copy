@@ -63,7 +63,8 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'Feed'>;
 
 export function HomeScreen({ navigation, route }: Props) {
   const { user } = useAuth();
-  const mode: FeedMode = route.params?.mode ?? 'jobs';
+  const requestedMode: FeedMode = route.params?.mode ?? 'jobs';
+  const mode: FeedMode = requestedMode === 'startups' ? 'jobs' : requestedMode;
   const startupFilterParams = route.params?.startupFilters;
   const jobFilterParams = route.params?.jobFilters;
   const startupFilters = useMemo(
@@ -199,6 +200,12 @@ export function HomeScreen({ navigation, route }: Props) {
       }
     }
   }, [listingFilters, loadJobs, loadStartups, startupFilters]);
+
+  useEffect(() => {
+    if (route.params?.mode === 'startups') {
+      navigation.setParams({ mode: 'jobs' });
+    }
+  }, [navigation, route.params?.mode]);
 
   useEffect(() => {
     fetchGeoLocation()

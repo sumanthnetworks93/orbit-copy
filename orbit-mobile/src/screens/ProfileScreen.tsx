@@ -83,8 +83,6 @@ const MENU_ITEMS = [
 
   { key: 'resume', label: 'Create resume' },
 
-  { key: 'saved', label: 'Saved startups' },
-
   { key: 'notifications', label: 'Notifications' },
 
   { key: 'privacy', label: 'Privacy Policy' },
@@ -404,10 +402,6 @@ export function ProfileScreen() {
     }
     if (key === 'resume') {
       void openResume();
-      return;
-    }
-    if (key === 'saved') {
-      openSavedStartups();
       return;
     }
     if (key === 'notifications') {

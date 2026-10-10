@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
-import { qrImageSrc, resolvePhonePreviewUrl } from '../hyd/previewUrl';
+import { qrImageSrc, resolvePhonePreviewUrl, shareUrlFromPreview } from '../hyd/previewUrl';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
@@ -18,6 +18,7 @@ function pageLocation(): { hostname: string; port: string; protocol: string } {
 
 export function MobileQr() {
   const [url, setUrl] = useState<string | null>(null);
+  const [kind, setKind] = useState<'expo-go' | 'browser'>('expo-go');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -26,7 +27,10 @@ export function MobileQr() {
     const { hostname, port, protocol } = pageLocation();
     void resolvePhonePreviewUrl({ hostname, port, protocol, apiBaseUrl: API_BASE_URL })
       .then((next) => {
-        if (!cancelled) setUrl(next);
+        if (cancelled) return;
+        const share = shareUrlFromPreview(next);
+        setUrl(share.url);
+        setKind(share.kind);
       })
       .catch((caught) => {
         if (!cancelled) {
@@ -47,15 +51,17 @@ export function MobileQr() {
 
   return (
     <View style={styles.qrBox} testID="mobile-qr">
-      <Text style={styles.qrTitle}>Open on your phone</Text>
+      <Text style={styles.qrTitle}>{kind === 'browser' ? 'Share with a friend' : 'Open in Expo Go'}</Text>
       <Text style={styles.qrHint}>
-        Same Wi‑Fi as this computer. If the scan fails, type the URL below in Safari or Chrome.
+        {kind === 'browser'
+          ? 'Anyone can open this HTTPS link in Chrome or Safari. No same Wi‑Fi and no Expo Go required.'
+          : 'Install Expo Go, join the same Wi‑Fi as this computer, then scan. The camera app or Expo Go both work.'}
       </Text>
       {url ? (
         <>
           <Image
             testID="mobile-qr-image"
-            accessibilityLabel="QR code for phone preview"
+            accessibilityLabel={kind === 'browser' ? 'QR code to share Orbit' : 'QR code for Expo Go'}
             source={{ uri: qrImageSrc(url, 280) }}
             style={styles.qr}
           />

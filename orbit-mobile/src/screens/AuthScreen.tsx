@@ -20,6 +20,8 @@ import { OrbitBackground } from '../components/OrbitBackground';
 import { OrbitLogo } from '../components/OrbitLogo';
 import { SocialButton } from '../components/SocialButton';
 import { SupportButton } from '../components/SupportButton';
+import { PostModal } from '../components/PostModal';
+import { isStoreRelease } from '../config/release';
 import { DEMO_PASSWORD, DEMO_SEEKER, isE2EMode, signInAsAdmin, signInAsEmployer, signInAsGuest, signInAsUser, signInWithPassword } from '../services/auth';
 import type { LegalDocId } from '../legal/content';
 import { colors } from '../theme/colors';
@@ -28,8 +30,13 @@ import { fonts } from '../theme/typography';
 export function AuthScreen() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
-  const [email, setEmail] = useState(DEMO_SEEKER.email ?? 'priya@orbit.app');
-  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [postOpen, setPostOpen] = useState(false);
+  const storeRelease = isStoreRelease();
+  const e2e = isE2EMode();
+  const showDemoDesks = !storeRelease;
+  const showLandingExtras = e2e;
+  const [email, setEmail] = useState(storeRelease ? '' : (DEMO_SEEKER.email ?? 'priya@orbit.app'));
+  const [password, setPassword] = useState(storeRelease ? '' : DEMO_PASSWORD);
   const compact = useIsCompact();
 
   async function handlePasswordLogin() {
@@ -106,35 +113,37 @@ export function AuthScreen() {
             <Text style={styles.subtitle}>
               Hyderabad jobs first. Apply in six fields. No PDF resume.
             </Text>
-            <View style={styles.chips}>
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>Apply without a PDF</Text>
-              </View>
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>Hyderabad first</Text>
-              </View>
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>Phone stays masked</Text>
-              </View>
-            </View>
           </View>
 
           <View style={styles.buttons}>
+            {showLandingExtras ? (
+              <Pressable
+                testID="auth-post-startup"
+                accessibilityLabel="Post your startup"
+                disabled={loadingProvider !== null}
+                onPress={() => setPostOpen(true)}
+                style={({ pressed }) => [styles.login, pressed && styles.pressed]}
+              >
+                <Text style={styles.loginText}>Post your startup</Text>
+              </Pressable>
+            ) : null}
             <Text style={styles.demoLabel}>Looking for work?</Text>
-            <Pressable
-              testID="auth-user"
-              accessibilityLabel="Login as user"
-              disabled={loadingProvider !== null}
-              onPress={() => void handleUser()}
-              style={({ pressed }) => [styles.login, pressed && styles.pressed]}
-            >
-              {loadingProvider === 'user' ? (
-                <ActivityIndicator color={colors.ink} />
-              ) : (
-                <Text style={styles.loginText}>Login as user</Text>
-              )}
-            </Pressable>
-            {isE2EMode() || compact ? (
+            {showDemoDesks ? (
+              <Pressable
+                testID="auth-user"
+                accessibilityLabel="Login as user"
+                disabled={loadingProvider !== null}
+                onPress={() => void handleUser()}
+                style={({ pressed }) => [styles.login, pressed && styles.pressed]}
+              >
+                {loadingProvider === 'user' ? (
+                  <ActivityIndicator color={colors.ink} />
+                ) : (
+                  <Text style={styles.loginText}>Login as user</Text>
+                )}
+              </Pressable>
+            ) : null}
+            {e2e || compact || storeRelease ? (
               <SocialButton
                 provider="github"
                 loading={loadingProvider === 'guest'}
@@ -169,7 +178,7 @@ export function AuthScreen() {
             />
             <Pressable
               testID="auth-login"
-              accessibilityLabel="Log in with demo account"
+              accessibilityLabel="Log in"
               disabled={loadingProvider !== null}
               onPress={() => void handlePasswordLogin()}
               style={({ pressed }) => [styles.login, pressed && styles.pressed]}
@@ -180,35 +189,39 @@ export function AuthScreen() {
                 <Text style={styles.loginText}>Log in</Text>
               )}
             </Pressable>
-            <Text style={styles.demoHint}>priya@orbit.app · OrbitDemo1!</Text>
+            {showDemoDesks ? <Text style={styles.demoHint}>priya@orbit.app · OrbitDemo1!</Text> : null}
             {isClerkConfigured ? <ClerkAuthActions /> : null}
-            <Text style={styles.demoLabel}>Hiring desk</Text>
-            <Pressable
-              testID="auth-admin"
-              accessibilityLabel="Login as super admin"
-              disabled={loadingProvider !== null}
-              onPress={() => void handleAdmin()}
-              style={({ pressed }) => [styles.employer, pressed && styles.pressed]}
-            >
-              {loadingProvider === 'admin' ? (
-                <ActivityIndicator color={colors.ink} />
-              ) : (
-                <Text style={styles.employerText}>Login as super admin</Text>
-              )}
-            </Pressable>
-            <Pressable
-              testID="auth-employer"
-              accessibilityLabel="Login as employer"
-              disabled={loadingProvider !== null}
-              onPress={() => void handleEmployer()}
-              style={({ pressed }) => [styles.employer, pressed && styles.pressed]}
-            >
-              {loadingProvider === 'employer' ? (
-                <ActivityIndicator color={colors.ink} />
-              ) : (
-                <Text style={styles.employerText}>Login as employer</Text>
-              )}
-            </Pressable>
+            {showDemoDesks && showLandingExtras ? (
+              <>
+                <Text style={styles.demoLabel}>Hiring desk</Text>
+                <Pressable
+                  testID="auth-admin"
+                  accessibilityLabel="Login as super admin"
+                  disabled={loadingProvider !== null}
+                  onPress={() => void handleAdmin()}
+                  style={({ pressed }) => [styles.employer, pressed && styles.pressed]}
+                >
+                  {loadingProvider === 'admin' ? (
+                    <ActivityIndicator color={colors.ink} />
+                  ) : (
+                    <Text style={styles.employerText}>Login as super admin</Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  testID="auth-employer"
+                  accessibilityLabel="Login as employer"
+                  disabled={loadingProvider !== null}
+                  onPress={() => void handleEmployer()}
+                  style={({ pressed }) => [styles.employer, pressed && styles.pressed]}
+                >
+                  {loadingProvider === 'employer' ? (
+                    <ActivityIndicator color={colors.ink} />
+                  ) : (
+                    <Text style={styles.employerText}>Login as employer</Text>
+                  )}
+                </Pressable>
+              </>
+            ) : null}
           </View>
 
           {Platform.OS === 'web' ? <MobileQr /> : null}
@@ -218,11 +231,17 @@ export function AuthScreen() {
               By continuing you agree to Orbit's Terms and Privacy Policy. We never hand employers your raw phone number.
             </Text>
             <LegalLinks onOpen={setLegalDoc} />
-            <SupportButton />
+            {showLandingExtras ? <SupportButton /> : null}
           </View>
         </ScrollView>
       </SafeAreaView>
       <LegalSheet docId={legalDoc} onClose={() => setLegalDoc(null)} />
+      <PostModal
+        visible={postOpen}
+        variant="startup"
+        onClose={() => setPostOpen(false)}
+        onPosted={() => setPostOpen(false)}
+      />
     </View>
   );
 }
@@ -264,26 +283,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.muted,
     maxWidth: 340,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-    maxWidth: 360,
-  },
-  chip: {
-    borderRadius: 999,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  chipText: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    color: colors.ink,
   },
   buttons: {
     gap: 12,

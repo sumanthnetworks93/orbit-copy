@@ -10,6 +10,7 @@ public static class DatabaseInitializer
         await EnsureStartupColumnsAsync(db);
         await EnsureJobColumnsAsync(db);
         await EnsureAlertTablesAsync(db);
+        await EnsureJobViewsTableAsync(db);
     }
 
     private static async Task EnsureStartupColumnsAsync(OrbitDbContext db)
@@ -157,5 +158,21 @@ public static class DatabaseInitializer
                 AdminEmail TEXT NOT NULL
             );
             """);
+    }
+
+    private static async Task EnsureJobViewsTableAsync(OrbitDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS JobViews (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                JobId INTEGER NOT NULL,
+                Title TEXT NOT NULL,
+                Company TEXT NOT NULL,
+                UserId TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_JobViews_JobId ON JobViews(JobId);");
     }
 }

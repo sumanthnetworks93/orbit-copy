@@ -7,6 +7,7 @@ import type { Job } from '../types';
 import { isJobVerifiedByOrbitSupport } from '../services/orbitSupport';
 import { colors, elevation } from '../theme/colors';
 import { fonts } from '../theme/typography';
+import { ViewMark } from '../ui';
 
 type Props = {
   job: Job;
@@ -67,17 +68,22 @@ export const JobRow = memo(function JobRow({ job, onApply, onOpen }: Props) {
 
       <View style={styles.actions}>
         <Text style={styles.salary}>{job.salary}</Text>
-        <Pressable
-          testID={`job-apply-${job.id}`}
-          style={({ pressed }) => [styles.apply, pressed && styles.pressed]}
-          onPress={(event) => {
-            event.stopPropagation();
-            if (onApply) onApply(job);
-            else setOpen(true);
-          }}
-        >
-          <Text style={styles.applyText}>{copy.applyNow}</Text>
-        </Pressable>
+        <View style={styles.actionRow}>
+          {onOpen ? (
+            <ViewMark testID={`job-view-${job.id}`} onPress={() => onOpen(job)} />
+          ) : null}
+          <Pressable
+            testID={`job-apply-${job.id}`}
+            style={({ pressed }) => [styles.apply, pressed && styles.pressed]}
+            onPress={(event) => {
+              event.stopPropagation();
+              if (onApply) onApply(job);
+              else setOpen(true);
+            }}
+          >
+            <Text style={styles.applyText}>{copy.applyNow}</Text>
+          </Pressable>
+        </View>
       </View>
 
       {onApply ? null : <ApplySheet job={job} visible={open} onClose={() => setOpen(false)} />}
@@ -138,6 +144,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   salary: { fontFamily: fonts.semiBold, fontSize: 16, color: colors.ink },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   apply: {
     backgroundColor: colors.lilac,
     borderRadius: 999,

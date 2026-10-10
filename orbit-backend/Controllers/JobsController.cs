@@ -127,6 +127,48 @@ public class JobsController(OrbitDbContext db, CurrentUser currentUser) : Contro
 
         return Ok(JobDto.From(job));
     }
+
+    [HttpPost("views")]
+    public async Task<ActionResult<JobViewDto>> LogView(
+        [FromBody] JobViewRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.JobId <= 0 || string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest(new { error = "Job id and title are required." });
+        }
+
+        var row = new JobView
+        {
+            JobId = request.JobId,
+            Title = request.Title.Trim(),
+            Company = request.Company?.Trim() ?? string.Empty,
+            UserId = currentUser.UserId
+                ?? (string.IsNullOrWhiteSpace(request.UserId) ? "guest" : request.UserId.Trim()),
+            CreatedAt = DateTime.UtcNow,
+        };
+        db.JobViews.Add(row);
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(JobViewDto.From(row));
+    }
+
+    [HttpGet("views")]
+    public async Task<ActionResult<IReadOnlyList<JobViewDto>>> ListViews(
+        [FromQuery] int? jobId,
+        CancellationToken cancellationToken)
+    {
+        var query = db.JobViews.AsQueryable();
+        if (jobId is > 0)
+        {
+            query = query.Where(item => item.JobId == jobId);
+        }
+
+        var rows = await query
+            .OrderByDescending(item => item.CreatedAt)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+        return Ok(rows.Select(JobViewDto.From).ToList());
+    }
 }
 
 public record CreateJobRequest(
@@ -136,6 +178,14 @@ public record CreateJobRequest(
     string? JobType,
     string? Tags,
     string? Salary);
+
+public record JobViewRequest(int JobId, string Title, string? Company, string? UserId);
+
+public record JobViewDto(int Id, int JobId, string Title, string Company, string UserId, DateTime CreatedAt)
+{
+    public static JobViewDto From(JobView row) =>
+        new(row.Id, row.JobId, row.Title, row.Company, row.UserId, row.CreatedAt);
+}
 
 public record JobFiltersResponse(IReadOnlyList<string> JobTypes);
 

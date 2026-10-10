@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test.describe('Employer workspace', () => {
   test('mock employer can post a Hyderabad job and open billing', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
+    await page.goto('/?e2e=1');
     await expect(page.getByTestId('auth-employer')).toBeVisible();
     await page.getByTestId('auth-employer').click();
     await expect(page.getByTestId('employer-screen')).toBeVisible();

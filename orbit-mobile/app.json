@@ -10,11 +10,6 @@
       "orbit",
       "appwrite-callback-6a9a36c10010254849a2"
     ],
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F4F2EE"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.orbit.app",
@@ -22,12 +17,50 @@
     },
     "android": {
       "package": "com.orbit.app",
+      "versionCode": 2,
+      "softwareKeyboardLayoutMode": "resize",
+      "userInterfaceStyle": "light",
       "adaptiveIcon": {
         "backgroundColor": "#F4F2EE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "orbit"
+            }
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "appwrite-callback-6a9a36c10010254849a2"
+            }
+          ]
+        }
+      ]
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#F7F4EC",
+      "barStyle": "dark-content"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -43,7 +76,35 @@
       "expo-web-browser",
       "expo-apple-authentication",
       "expo-secure-store",
-      "@clerk/expo"
-    ]
+      "@clerk/expo",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#F4F2EE",
+          "resizeMode": "contain",
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          },
+          "android": {
+            "usesCleartextTraffic": false,
+            "minSdkVersion": 24,
+            "targetSdkVersion": 35
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d778644c-915c-4572-9bdb-03ba78d176dd"
+      }
+    },
+    "owner": "sumanthnetworks"
   }
 }

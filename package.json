@@ -5,6 +5,7 @@
     "start": "npm start --prefix orbit-mobile",
     "start:tunnel": "npm run start:tunnel --prefix orbit-mobile",
     "ios": "npm run ios --prefix orbit-mobile",
-    "android": "npm run android --prefix orbit-mobile"
+    "android": "npm run android --prefix orbit-mobile",
+    "expo": "npm exec --prefix orbit-mobile -- expo"
   }
 }

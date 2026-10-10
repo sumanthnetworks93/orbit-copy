@@ -68,6 +68,10 @@ function buildQuery(params: Record<string, string | number | boolean | null | un
 }
 
 async function request<T>(path: string, token?: string | null, init?: RequestInit): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new Error('API is not configured');
+  }
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init?.headers as Record<string, string> | undefined),
@@ -290,6 +294,26 @@ export async function createJob(input: CreateJobInput, token: string) {
   });
   clearJobsCache();
   return mapJob(data);
+}
+
+export async function logJobView(
+  job: { id: number; title: string; company: string },
+  userId?: string | null,
+): Promise<void> {
+  try {
+    await request('/api/jobs/views', null, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId: job.id,
+        title: job.title,
+        company: job.company,
+        userId: userId?.trim() || 'guest',
+      }),
+    });
+  } catch {
+    // ponytail: listing still opens if the API is down
+  }
 }
 
 export async function fetchPostedJobs(): Promise<Job[]> {

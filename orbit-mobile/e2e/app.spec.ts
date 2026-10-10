@@ -2,16 +2,13 @@ import { expect, test } from '@playwright/test';
 import { signInAsGuest } from './helpers';
 
 test.describe('Customer job feed', () => {
-  test('guest can open jobs and switch to startups', async ({ page }) => {
+  test('guest can open jobs and switch to freelance', async ({ page }) => {
     await signInAsGuest(page);
     await expect(page.getByText('Jobs', { exact: true }).first()).toBeVisible();
+    await expect(page.getByTestId('segment-startups')).toHaveCount(0);
     await expect
       .poll(async () => page.getByTestId('feed-meta').innerText(), { timeout: 8_000 })
       .toMatch(/POSTED TODAY/);
-
-    await page.getByTestId('segment-startups').click();
-    await expect(page.getByTestId('startups-screen')).toBeVisible();
-    await expect(page.getByText('Startups', { exact: true }).first()).toBeVisible();
 
     await page.getByTestId('segment-freelance').click();
     await expect(page.getByTestId('freelance-screen')).toBeVisible();
@@ -74,7 +71,7 @@ test.describe('Customer job feed', () => {
     await expect(page.getByTestId('legal-link-privacy')).toBeVisible();
     await expect(page.getByTestId('legal-link-terms')).toBeVisible();
     await expect(page.getByTestId('legal-link-notice')).toBeVisible();
-    await expect(page.getByTestId('support-button')).toContainText('support@orbit.app');
+    await expect(page.getByTestId('support-button')).toHaveCount(0);
     await page.getByTestId('legal-link-privacy').click();
     await expect(page.getByTestId('legal-sheet-privacy')).toBeVisible();
   });

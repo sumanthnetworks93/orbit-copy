@@ -18,11 +18,24 @@ test.describe('Auth screen', () => {
     await expect(page.getByText('Sign up', { exact: true })).toBeVisible();
   });
 
-  test('user, employer, and super admin one-click logins are always on the auth screen', async ({ page }) => {
+  test('keeps chips, post startup, hiring desk, and support off the public landing page', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByText('Apply without a PDF')).toHaveCount(0);
+    await expect(page.getByTestId('auth-post-startup')).toHaveCount(0);
+    await expect(page.getByTestId('auth-admin')).toHaveCount(0);
+    await expect(page.getByTestId('auth-employer')).toHaveCount(0);
+    await expect(page.getByTestId('support-button')).toHaveCount(0);
+  });
+
+  test('user, employer, and super admin one-click logins are on the e2e auth screen', async ({ page }) => {
+    await page.goto('/?e2e=1');
     await expect(page.getByTestId('auth-user')).toHaveText('Login as user');
     await expect(page.getByTestId('auth-employer')).toHaveText('Login as employer');
     await expect(page.getByTestId('auth-admin')).toHaveText('Login as super admin');
+    await expect(page.getByTestId('auth-post-startup')).toHaveText('Post your startup');
+    await page.getByTestId('auth-post-startup').click();
+    await expect(page.getByTestId('post-sheet-title')).toHaveText('Post a startup');
+    await page.getByTestId('post-sheet-cancel').click();
     await page.getByTestId('auth-user').click();
     await expect(page.getByTestId('jobs-screen')).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('tab-profile')).toBeVisible();
@@ -50,7 +63,7 @@ test.describe('Auth screen', () => {
     await page.goto('/');
     const qrUrl = page.getByTestId('mobile-qr-url');
     await expect(qrUrl).toBeVisible();
-    await expect(qrUrl).toHaveText(/^http:\/\/(\d{1,3}\.){3}\d{1,3}:8081\/$/);
+    await expect(qrUrl).toHaveText(/^(exp:\/\/(\d{1,3}\.){3}\d{1,3}:8081|https:\/\/.+\.ngrok[-a-z]*\.app\/?)$/);
     await expect(qrUrl).not.toContainText('192.168.1.68');
     await expect(qrUrl).not.toContainText('e2e=1');
     await expect(page.getByTestId('mobile-qr-image')).toBeVisible();

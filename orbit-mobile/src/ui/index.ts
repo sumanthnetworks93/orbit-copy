@@ -16,3 +16,4 @@ export { StatusPill } from './StatusPill';
 export { Surface } from './Surface';
 export { ToggleRow } from './ToggleRow';
 export { UpvoteMark } from './UpvoteMark';
+export { ViewMark } from './ViewMark';
